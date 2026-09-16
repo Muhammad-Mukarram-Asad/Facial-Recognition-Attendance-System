@@ -1,7 +1,8 @@
 import type { NextRequest } from 'next/server';
 
 import { hourlyCheckIns, weeklyPunctuality, WORKFORCE } from '@/server/data/seed';
-import { getStore } from '@/server/lib/store';
+// HIDDEN — leave management.
+// import { getStore } from '@/server/lib/store';
 import { handleRouteError, ok } from '@/server/lib/response';
 
 /** Wider ranges soften the daily spikes; keeps the range switcher meaningful. */
@@ -11,9 +12,10 @@ export async function GET(request: NextRequest) {
   try {
     const range = request.nextUrl.searchParams.get('range') ?? '24h';
     const scale = RANGE_SCALE[range] ?? 1;
-    const store = getStore();
 
-    const pending = store.leave.filter((l) => l.status === 'Pending');
+    // HIDDEN — leave management.
+    // const store = getStore();
+    // const pending = store.leave.filter((l) => l.status === 'Pending');
     const present = Math.round(WORKFORCE.present * scale);
     const onTime = Math.round(WORKFORCE.onTime * scale);
 
@@ -30,18 +32,16 @@ export async function GET(request: NextRequest) {
       workforce: {
         total: WORKFORCE.total,
         active: WORKFORCE.active,
-        probation: WORKFORCE.probation,
       },
       absence: {
         total: WORKFORCE.total - present,
-        unplanned: Math.round(WORKFORCE.unplannedAbsent * scale),
-        onLeave: WORKFORCE.onLeave,
       },
-      pendingLeave: {
-        count: pending.length,
-        overdue: pending.filter((l) => Date.parse(l.submittedAt) < Date.parse('2026-09-07')).length,
-        oldest: '04 Sep 2026',
-      },
+      // HIDDEN — leave management.
+      // pendingLeave: {
+      //   count: pending.length,
+      //   overdue: pending.filter((l) => Date.parse(l.submittedAt) < Date.parse('2026-09-07')).length,
+      //   oldest: '04 Sep 2026',
+      // },
       hourlyCheckIns: hourlyCheckIns.map((point) => ({
         ...point,
         count: Math.round(point.count * scale),

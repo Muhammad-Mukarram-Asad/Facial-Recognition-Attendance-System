@@ -5,7 +5,7 @@ export const profileSchema = z.object({
   name: z.string(),
   designation: z.string(),
   department: z.string(),
-  status: z.enum(['Present', 'Late', 'Absent', 'On Leave']),
+  status: z.enum(['Present', 'Late', 'Absent' /* HIDDEN — leave management. , 'On Leave' */]),
   gateCamera: z.string(),
   stats: z.object({
     attendanceRate: z.string(),
@@ -13,7 +13,7 @@ export const profileSchema = z.object({
     absences: z.string(),
     averageHours: z.string(),
   }),
-  history: z.array(z.enum(['present', 'late', 'absent', 'leave'])),
+  history: z.array(z.enum(['present', 'late', 'absent' /* HIDDEN — leave management. , 'leave' */])),
   historyLabel: z.string(),
   punches: z.array(z.object({ kind: z.string(), camera: z.string(), time: z.string() })),
 });

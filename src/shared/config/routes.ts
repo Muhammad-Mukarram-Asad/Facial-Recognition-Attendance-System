@@ -18,7 +18,7 @@ export const ROUTES = {
   //             by the backend team and handed to the client.
   //   leave   — leave management is hidden for this release.
   signUp: "/sign-up",
-  // leave: '/leave-requests',
+  leave: "/leave-requests",
   // ─────────────────────────────────────────────────────────────────────
 } as const;
 
@@ -44,8 +44,8 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     id: "employees",
-    label: "Employees",
-    icon: "users",
+    label: "Add Employee",
+    icon: "user-round-plus",
     href: ROUTES.employees,
   },
   // HIDDEN — leave management.
@@ -53,13 +53,13 @@ export const NAV_ITEMS: NavItem[] = [
   {
     id: "reports",
     label: "Reports",
-    icon: "file-bar-chart",
+    icon: "file-chart-column",
     href: ROUTES.reports,
   },
   {
     id: "profile",
-    label: "Employee Profile",
-    icon: "user-round",
+    label: "Employees",
+    icon: "users",
     href: ROUTES.profile,
   },
 ];
@@ -68,9 +68,9 @@ export const NAV_ITEMS: NavItem[] = [
 export const PAGE_META: Record<string, { crumb: string; title: string }> = {
   [ROUTES.dashboard]: { crumb: "Overview", title: "Attendance analytics" },
   [ROUTES.attendance]: { crumb: "Attendance", title: "Daily records" },
-  [ROUTES.employees]: { crumb: "Workforce", title: "Employee records" },
+  [ROUTES.employees]: { crumb: "Workforce", title: "Add employee" },
   [ROUTES.reports]: { crumb: "Exports", title: "Reports" },
-  [ROUTES.profile]: { crumb: "Workforce", title: "Employee profile" },
+  [ROUTES.profile]: { crumb: "Workforce", title: "Employees" },
   // HIDDEN — leave management.
   // [ROUTES.leave]: { crumb: 'Requests', title: 'Leave approvals' },
 };

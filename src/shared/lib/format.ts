@@ -22,6 +22,14 @@ export function serial(index: number): string {
   return String(index + 1).padStart(2, '0');
 }
 
+/** Day-first date, matching every date field in the app (dd/mm/yyyy). */
+export function formatDate(date: Date): string {
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
 const NBSP_DASH = '—';
 
 /** Attendance times are absent for non-present employees; render an em dash. */

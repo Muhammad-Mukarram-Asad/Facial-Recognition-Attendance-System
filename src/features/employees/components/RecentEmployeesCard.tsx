@@ -80,7 +80,7 @@ export function RecentEmployeesCard() {
               disabled={remove.isPending}
               style={iconButton}
             >
-              <Icon name="trash-2" size={15} />
+              <Icon name="trash" size={15} />
             </button>
           </div>
         ))

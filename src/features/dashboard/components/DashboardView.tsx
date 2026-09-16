@@ -59,8 +59,6 @@ export function DashboardView() {
           <Skeleton height={172} radius={14} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(155px,1fr))', gap: 14 }}>
             <Skeleton height={150} radius={14} />
-            <Skeleton height={150} radius={14} />
-            <Skeleton height={150} radius={14} />
           </div>
           <Skeleton height={320} radius={14} />
         </div>
@@ -74,18 +72,7 @@ export function DashboardView() {
               value={data.workforce.total.toLocaleString()}
               subs={[
                 { label: 'Active', value: data.workforce.active.toLocaleString() },
-                // HIDDEN — probation count.
-                // { label: 'Probation', value: String(data.workforce.probation) },
-              ]}
-            />
-            <StatCard
-              label="Absent today"
-              value={String(data.absence.total)}
-              valueTone="high"
-              subs={[
-                { label: 'Unplanned', value: String(data.absence.unplanned), tone: 'high' },
-                // HIDDEN — leave management.
-                // { label: 'Leave', value: String(data.absence.onLeave), tone: 'medium' },
+                { label: 'Absent', value: String(data.absence.total), tone: 'high' },
               ]}
             />
             {/* HIDDEN — leave management.

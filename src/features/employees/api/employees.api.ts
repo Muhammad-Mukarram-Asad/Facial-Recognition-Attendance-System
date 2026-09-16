@@ -1,4 +1,4 @@
-import { del, getValidated, postValidated } from '@/shared/api/client';
+import { del, getValidated, patchValidated, postValidated } from '@/shared/api/client';
 
 import {
   employeeListSchema,
@@ -18,6 +18,9 @@ export const employeesApi = {
 
   create: (input: EmployeeInput): Promise<Employee> =>
     postValidated('/employees', employeeSchema, input),
+
+  update: (employeeId: string, input: EmployeeInput): Promise<Employee> =>
+    patchValidated(`/employees/${employeeId}`, employeeSchema, input),
 
   remove: (employeeId: string): Promise<void> => del(`/employees/${employeeId}`),
 };

@@ -22,18 +22,16 @@ export const overviewSchema = z.object({
   workforce: z.object({
     total: z.number(),
     active: z.number(),
-    probation: z.number(),
   }),
   absence: z.object({
     total: z.number(),
-    unplanned: z.number(),
-    onLeave: z.number(),
   }),
-  pendingLeave: z.object({
-    count: z.number(),
-    overdue: z.number(),
-    oldest: z.string(),
-  }),
+  // HIDDEN — leave management.
+  // pendingLeave: z.object({
+  //   count: z.number(),
+  //   overdue: z.number(),
+  //   oldest: z.string(),
+  // }),
   hourlyCheckIns: z.array(z.object({ hour: z.string(), count: z.number() })),
   weeklyPunctuality: z.array(
     z.object({ day: z.string(), onTime: z.number(), late: z.number(), absent: z.number() }),
@@ -58,7 +56,7 @@ export const matrixRowSchema = z.object({
   name: z.string(),
   employeeId: z.string(),
   department: z.string(),
-  days: z.array(z.enum(['present', 'late', 'absent', 'leave'])),
+  days: z.array(z.enum(['present', 'late', 'absent' /* HIDDEN — leave management. , 'leave' */])),
 });
 
 export const riskListSchema = z.array(riskEntrySchema);

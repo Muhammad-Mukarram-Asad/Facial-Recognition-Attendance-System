@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 
+import { employeeInputSchema } from '@/features/employees/types';
 import { handleRouteError, notFound, ok } from '@/server/lib/response';
 import { getStore } from '@/server/lib/store';
 
@@ -14,6 +15,27 @@ export async function GET(_request: NextRequest, context: Context) {
     );
     if (!employee) return notFound('Employee not found');
     return ok(employee);
+  } catch (error) {
+    return handleRouteError(error);
+  }
+}
+
+/** Full-record update from the employee edit screen. Employee ID never changes. */
+export async function PATCH(request: NextRequest, context: Context) {
+  try {
+    const { employeeId } = await context.params;
+    const store = getStore();
+    const index = store.employees.findIndex(
+      (candidate) => candidate.employeeId.toLowerCase() === employeeId.toLowerCase(),
+    );
+    if (index === -1) return notFound('Employee not found');
+
+    const input = employeeInputSchema.parse(await request.json());
+    const existing = store.employees[index];
+    const updated = { ...existing, ...input, employeeId: existing.employeeId };
+    store.employees[index] = updated;
+
+    return ok(updated);
   } catch (error) {
     return handleRouteError(error);
   }

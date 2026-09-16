@@ -5,7 +5,8 @@ export const STATUS_TONE: Record<AttendanceStatus, Tone> = {
   Present: 'success',
   Late: 'warning',
   Absent: 'high',
-  'On Leave': 'medium',
+  // HIDDEN — leave management.
+  // 'On Leave': 'medium',
 };
 
 export function toneForStatus(status: AttendanceStatus): Tone {

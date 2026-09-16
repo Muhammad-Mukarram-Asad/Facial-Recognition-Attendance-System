@@ -5,10 +5,11 @@ const MARK_STYLE: Record<DayMark, { bg: string; dot: string; label: string }> = 
   present: { bg: 'rgba(23,169,123,.22)', dot: 'var(--success)', label: 'Present' },
   late: { bg: 'rgba(232,163,23,.28)', dot: 'var(--warning)', label: 'Late' },
   absent: { bg: 'rgba(229,72,77,.26)', dot: 'var(--priority-high)', label: 'Absent' },
-  leave: { bg: 'rgba(59,102,240,.22)', dot: 'var(--brand-blue-500)', label: 'Approved leave' },
+  // HIDDEN — leave management.
+  // leave: { bg: 'rgba(59,102,240,.22)', dot: 'var(--brand-blue-500)', label: 'Approved leave' },
 };
 
-const LEGEND: DayMark[] = ['present', 'late', 'absent', 'leave'];
+const LEGEND: DayMark[] = ['present', 'late', 'absent' /* , 'leave' */];
 
 export interface AttendanceHeatmapProps {
   history: DayMark[];

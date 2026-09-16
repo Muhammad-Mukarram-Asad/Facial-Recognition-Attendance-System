@@ -40,7 +40,8 @@ export function AttendanceView() {
         count={selection.count}
         pending={bulkUpdate.isPending}
         onMarkPresent={() => applyStatus('Present')}
-        onApproveLeave={() => applyStatus('On Leave')}
+        // HIDDEN — leave management.
+        // onApproveLeave={() => applyStatus('On Leave')}
         onClear={selection.clear}
       />
 

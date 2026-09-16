@@ -9,7 +9,8 @@ export const SEARCH_COLUMNS = [
   { value: 'status', label: 'Status' },
 ] as const;
 
-export const STATUS_FILTERS = ['All', 'Present', 'Late', 'Absent', 'On Leave'] as const;
+// HIDDEN — leave management. Restore 'On Leave' below to bring it back.
+export const STATUS_FILTERS = ['All', 'Present', 'Late', 'Absent' /* , 'On Leave' */] as const;
 
 export type SearchColumn = (typeof SEARCH_COLUMNS)[number]['value'];
 export type StatusFilter = (typeof STATUS_FILTERS)[number];
@@ -32,7 +33,7 @@ export const attendanceRowSchema = z.object({
   checkIn: z.string(),
   checkOut: z.string(),
   hours: z.string(),
-  status: z.enum(['Present', 'Late', 'Absent', 'On Leave']),
+  status: z.enum(['Present', 'Late', 'Absent' /* , 'On Leave' */]),
   camera: z.string(),
   confidence: z.number().nullable(),
 });

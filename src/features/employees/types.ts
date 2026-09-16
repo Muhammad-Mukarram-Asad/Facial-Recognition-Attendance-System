@@ -9,12 +9,7 @@ export const DEPARTMENTS = [
   'Administration',
 ] as const;
 
-export const SHIFTS = [
-  'A — 06:00 to 14:00',
-  'B — 14:00 to 22:00',
-  'C — 22:00 to 06:00',
-  'General — 09:00 to 18:00',
-] as const;
+export const SHIFTS = ['General — 09:00 to 17:00'] as const;
 
 export const EMPLOYMENT_STATUSES = ['Active', 'Probation', 'Contract', 'Suspended'] as const;
 
@@ -87,7 +82,7 @@ export const EMPTY_EMPLOYEE: EmployeeInput = {
   dateOfBirth: '',
   department: 'Spinning — LTM-6',
   designation: '',
-  shift: 'A — 06:00 to 14:00',
+  shift: 'General — 09:00 to 17:00',
   joiningDate: '',
   reportingManager: '',
   employmentStatus: 'Active',

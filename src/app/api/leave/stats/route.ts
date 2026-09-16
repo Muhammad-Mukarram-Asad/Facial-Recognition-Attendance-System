@@ -1,4 +1,3 @@
-import { WORKFORCE } from '@/server/data/seed';
 import { handleRouteError, ok } from '@/server/lib/response';
 import { getStore } from '@/server/lib/store';
 
@@ -10,9 +9,9 @@ export async function GET() {
     return ok({
       pending: store.leave.filter((request) => request.status === 'Pending').length,
       // Baseline month-to-date figures plus anything decided in this session.
-      approvedThisMonth: 86 + decided.filter((request) => request.status === 'Approved').length,
-      rejected: 9 + decided.filter((request) => request.status === 'Rejected').length,
-      onLeaveToday: WORKFORCE.onLeave,
+      approvedThisMonth: 6 + decided.filter((request) => request.status === 'Approved').length,
+      rejected: 1 + decided.filter((request) => request.status === 'Rejected').length,
+      onLeaveToday: 2,
     });
   } catch (error) {
     return handleRouteError(error);

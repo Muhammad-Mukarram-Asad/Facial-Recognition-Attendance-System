@@ -9,8 +9,8 @@ import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { Avatar, Card, EmptyState, Icon, SkeletonRows } from '@/shared/ui';
 
 /**
- * Landing view for /employee-profile — the sidebar links here without an id,
- * so offer a picker rather than a dead end.
+ * Landing view for /employee-profile — the sidebar's "Employees" destination.
+ * Lists the roster; opening one goes to its edit screen.
  */
 export function ProfileDirectory() {
   const router = useRouter();
@@ -21,11 +21,9 @@ export function ProfileDirectory() {
   return (
     <Card padding={22} style={{ gap: 14 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <h2 style={{ margin: 0, fontSize: 21, fontWeight: 700, letterSpacing: '-0.02em' }}>
-          Choose an employee
-        </h2>
+        <h2 style={{ margin: 0, fontSize: 21, fontWeight: 700, letterSpacing: '-0.02em' }}>Employees</h2>
         <p style={{ margin: 0, fontSize: 13.5, color: 'var(--text-muted)' }}>
-          Open a profile to see their 30-day attendance history and gate punches.
+          Open a record to edit its details or remove the employee.
         </p>
       </div>
 

@@ -4,7 +4,8 @@ export const REPORT_TYPES = [
   'Daily attendance register',
   'Monthly summary per employee',
   'Late arrivals and early exits',
-  'Absence and leave ledger',
+  // HIDDEN — leave management.
+  // 'Absence and leave ledger',
   'Overtime hours',
 ] as const;
 
@@ -20,7 +21,8 @@ export const REPORT_COLUMNS = [
   { id: 'times', label: 'Check in / check out', default: true },
   { id: 'hours', label: 'Worked hours', default: true },
   { id: 'camera', label: 'Camera and confidence', default: false },
-  { id: 'leaveBalance', label: 'Leave balance', default: false },
+  // HIDDEN — leave management.
+  // { id: 'leaveBalance', label: 'Leave balance', default: false },
 ] as const;
 
 export type ReportColumnId = (typeof REPORT_COLUMNS)[number]['id'];

@@ -5,12 +5,13 @@ import { Button } from '@/shared/ui';
 export interface BulkActionBarProps {
   count: number;
   onMarkPresent: () => void;
-  onApproveLeave: () => void;
+  // HIDDEN — leave management.
+  // onApproveLeave: () => void;
   onClear: () => void;
   pending?: boolean;
 }
 
-export function BulkActionBar({ count, onMarkPresent, onApproveLeave, onClear, pending }: BulkActionBarProps) {
+export function BulkActionBar({ count, onMarkPresent, onClear, pending }: BulkActionBarProps) {
   if (count === 0) return null;
 
   return (
@@ -33,9 +34,11 @@ export function BulkActionBar({ count, onMarkPresent, onApproveLeave, onClear, p
       <Button variant="secondary" size="sm" icon="check" onClick={onMarkPresent} loading={pending}>
         Mark present
       </Button>
+      {/* HIDDEN — leave management.
       <Button variant="secondary" size="sm" icon="calendar-check" onClick={onApproveLeave} loading={pending}>
         Approve leave
       </Button>
+      */}
       <Button variant="ghost" size="sm" onClick={onClear}>
         Clear
       </Button>

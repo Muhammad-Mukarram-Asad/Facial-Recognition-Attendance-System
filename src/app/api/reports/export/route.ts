@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
     if (body.columns.includes('times')) header.push('Check in', 'Check out');
     if (body.columns.includes('hours')) header.push('Hours');
     if (body.columns.includes('camera')) header.push('Camera', 'Confidence');
-    if (body.columns.includes('leaveBalance')) header.push('Leave balance');
+    // HIDDEN — leave management.
+    // if (body.columns.includes('leaveBalance')) header.push('Leave balance');
 
     const lines = [header.join(',')];
 
@@ -52,7 +53,8 @@ export async function POST(request: NextRequest) {
       if (body.columns.includes('times')) row.push(orDash(record.checkIn), orDash(record.checkOut));
       if (body.columns.includes('hours')) row.push(orDash(record.hours));
       if (body.columns.includes('camera')) row.push(record.camera, String(record.confidence ?? '—'));
-      if (body.columns.includes('leaveBalance')) row.push('14 days');
+      // HIDDEN — leave management.
+      // if (body.columns.includes('leaveBalance')) row.push('14 days');
 
       lines.push(row.map(escapeCsv).join(','));
     }

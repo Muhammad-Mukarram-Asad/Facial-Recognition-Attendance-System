@@ -25,8 +25,7 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: `${APP_CONFIG.brandName} — ${APP_CONFIG.tagline}`,
-  description:
-    'Face-recognition attendance console for gate check-ins, leave approvals and workforce reporting.',
+  description: 'Face-recognition attendance console for gate check-ins and workforce reporting.',
 };
 
 export const viewport: Viewport = {
