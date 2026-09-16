@@ -1,37 +1,78 @@
-# FaceTrack — Attendance Intelligence Console
+# FaceTrack — Attendance Intelligence System
 
-Frontend for the JBS Omnivision / Lucky Textile Mills face-recognition attendance
-system, built from the `FaceTrack Attendance.dc.html` design.
+FaceTrack is the frontend console for a face-recognition attendance system —
+a single dashboard for tracking check-ins, managing the employee roster,
+reviewing attendance history, and exporting reports.
 
-Next.js App Router · TypeScript · TanStack Query · Zod · Tailwind 4 baseline.
+## ✨ Purpose
 
-## Running it
+- 📊 **Dashboard** — live presence, punctuality trends, and hourly check-in activity at a glance.
+- 🧾 **Attendance records** — searchable, filterable daily logs with bulk actions.
+- 👥 **Employee management** — roster, profiles, and face enrollment.
+- 📈 **Reports** — built and saved aggregate reports, exportable on demand.
+- 🌗 **Light / dark themes** — instant, flash-free theme switching.
+- 📱 **Responsive** — real component swaps (not just CSS) below 900px.
+
+## 🛠️ Tech stack
+
+|                               |                                                  |
+| ----------------------------- | ------------------------------------------------ |
+| ⚛️ **React 19**               | UI library                                       |
+| ▲ **Next.js 16** (App Router) | Routing, server + client composition             |
+| 🟦 **TypeScript**             | End-to-end type safety                           |
+| 🎨 **Tailwind CSS 4**         | Styling, design tokens                           |
+| 🔄 **TanStack Query**         | Server state, caching, mutations                 |
+| 🌐 **Axios**                  | HTTP client                                      |
+| ✅ **Zod**                    | Runtime schema validation for every API response |
+| 🧹 **ESLint**                 | Linting                                          |
+| 🎯 **Lucide**                 | Icon set                                         |
+
+## 🚀 Getting started
+
+Clone the repo and install dependencies:
 
 ```bash
+git clone <repository-url>
+cd facial-recognition
 npm install
-npm run dev     # http://localhost:3000
 ```
 
-Any well-formed email and a password of 4+ characters signs you in — the mock
-auth route accepts them and issues a session token. There is no public sign-up;
-accounts come from the backend team.
+Run the dev server:
 
-## Architecture
+```bash
+npm run dev
+```
 
-Feature-driven (domain-driven). Each business domain is a self-contained
-vertical slice; nothing reaches across into another feature's internals.
+Open [http://localhost:3000](http://localhost:3000) — sign in with any
+well-formed email and a password of 4+ characters.
+
+## 📜 Scripts
+
+```bash
+npm run dev       # start the dev server
+npm run build     # production build
+npm start         # run the production build
+npm run lint      # lint the codebase
+```
+
+## 🏗️ Architecture
+
+Feature-first (domain-driven). Each business domain is a self-contained
+vertical slice — routes are created first, then the feature's own UI
+components, then wired into the page last. Nothing reaches across into
+another feature's internals.
 
 ```
 src/
 ├── app/                        App Router — routing and composition only
 │   ├── (auth)/                 sign-in, forgot-password (split-screen shell)
-│   ├── (console)/              guarded routes           (sidebar + topbar shell)
+│   ├── (console)/              guarded routes (sidebar + topbar shell)
 │   │   ├── dashboard/
 │   │   ├── attendance-records/
 │   │   ├── employees/
 │   │   ├── reports/
 │   │   └── employee-profile/[employeeId]/
-│   ├── api/                    mock backend (route handlers)
+│   ├── api/                    API route handlers
 │   ├── globals.css             design tokens
 │   └── layout.tsx
 │
@@ -43,9 +84,9 @@ src/
 │   └── <feature>/
 │       ├── types.ts            zod schemas + inferred types (the contract)
 │       ├── api/                endpoint functions, validated responses
-│       ├── hooks/              TanStack Query wrappers
-│       ├── lib/                domain rules
-│       └── components/         feature UI, composed by a *View
+│       ├── hooks/               TanStack Query wrappers
+│       ├── lib/                 domain rules
+│       └── components/          feature UI, composed by a *View
 │
 ├── shared/                     cross-cutting, domain-agnostic
 │   ├── api/                    axios client, query keys, query client
@@ -54,9 +95,9 @@ src/
 │   ├── types/                  shared primitives
 │   └── ui/                     design-system kit
 │
-└── server/                     mock data source
-    ├── data/seed.ts            roster, gate log, leave, notifications
-    └── lib/                    in-memory store, response + pagination helpers
+└── server/                     API data source
+    ├── data/                   seed data
+    └── lib/                    store, response + pagination helpers
 ```
 
 **Rules that keep it honest**
@@ -67,7 +108,7 @@ src/
 - Every sidebar destination is its own route, so deep links and the back button work.
 - `shared/ui` knows nothing about attendance.
 
-## Data layer
+## 🔄 Data layer
 
 Every server read and write goes through TanStack Query.
 
@@ -76,88 +117,30 @@ Every server read and write goes through TanStack Query.
   surfaces at the boundary rather than as `undefined` deep in a chart.
 - `shared/api/query-keys.ts` — one key factory, so invalidation can't miss a cache entry.
 - Mutations invalidate across features where a write genuinely moves other numbers
-  (approving leave refreshes the leave list, the dashboard and the notification bell).
-- Loading and error states are real: skeletons while pending, retry affordance on failure,
-  `placeholderData` so filtering never blanks a table.
+  (adding, removing employees)
+- Loading and error states are real: skeletons while pending, retry affordance on
+  failure, `placeholderData` so filtering never blanks a table.
 
-### Swapping in the real backend
+## 🎨 Design system
 
-The mock lives entirely under `src/app/api` and `src/server`. Point the client at
-the production service and delete those two folders — no feature code changes:
+Tokens in `src/app/globals.css` define colours, type scale, spacing, radii,
+elevation, and motion. Dark mode overrides tokens only, under
+`[data-theme="dark"]` — an inline script in `<head>` stamps the stored theme
+before first paint, so there's no flash on load.
 
-```bash
-# .env.local
-NEXT_PUBLIC_API_BASE_URL=https://attendance.api.internal/v1
-```
+Charts are hand-built SVG/CSS against the same tokens — no charting dependency.
 
-Endpoints the frontend expects:
-
-| Method       | Path                                | Purpose                         |
-| ------------ | ----------------------------------- | ------------------------------- |
-| POST         | `/auth/sign-in`                     | session + user                  |
-| POST         | `/auth/forgot-password`             | reset link (never enumerates)   |
-| GET          | `/dashboard/overview?range=`        | headline metrics and charts     |
-| GET          | `/dashboard/risk｜stream｜matrix`   | risk list, live feed, week grid |
-| GET / PATCH  | `/attendance`                       | paged records / bulk status     |
-| GET / POST   | `/employees`                        | roster / enroll                 |
-| GET / DELETE | `/employees/{employeeId}`           | detail / remove                 |
-| GET          | `/profile/{employeeId}`             | 30-day history and punches      |
-| GET / POST   | `/reports/*`                        | aggregates, saved, export blob  |
-| GET / PATCH  | `/notifications`, `/{id}`           | bell feed and read state        |
-
-## Temporarily hidden
-
-These are commented out, not deleted — every module, component and endpoint is
-intact so each can be switched back on without rebuilding it.
-
-| Hidden                        | Where to restore                                                   |
-| ----------------------------- | ------------------------------------------------------------------ |
-| Notification bell + panel     | `shell/components/Topbar.tsx`, `shell/components/ConsoleShell.tsx` |
-| Attendance risk list          | `dashboard/components/DashboardView.tsx`                           |
-| Pending-leave card            | `dashboard/components/DashboardView.tsx`                           |
-| Probation count               | `dashboard/components/DashboardView.tsx` (Total employees subs)    |
-| Leave count on "Absent today" | `dashboard/components/DashboardView.tsx`                           |
-| Leave management (whole area) | `shared/config/routes.ts`, `app/(console)/leave-requests/page.tsx` |
-| Break in / break out punches  | `server/data/seed.ts` → `recentPunches`                            |
-| Self-service sign-up          | `app/(auth)/sign-up/page.tsx`, `auth/components/SignInForm.tsx`    |
-
-`/sign-up` and `/leave-requests` are retired in `next.config.ts` via `redirects()`
-— that runs before routing, so a direct hit never renders the console shell first.
-Deleting the entry brings the route back.
-
-Accounts are provisioned by the backend team, so sign-in is the only public entry
-point. **Forgot password** (`/forgot-password`) is live and reports success
-regardless of whether the address exists, so the form can't be used to enumerate staff.
-
-## Design system
-
-Tokens in `src/app/globals.css` are transcribed from the design — colours,
-type scale, spacing, radii, elevation, motion, and the keyframes
-(`ftFadeUp`, `ftScan`, `ftPulse`, `ftDrawLine`, …).
-
-Dark mode overrides tokens only, under `[data-theme="dark"]`. An inline script in
-`<head>` stamps the stored theme before first paint, and React subscribes to that
-attribute via `useSyncExternalStore` — so there's no flash and no mount effect.
-
-Charts are hand-built SVG/CSS against the same tokens: no charting dependency.
-
-## Layout
+## 📐 Layout
 
 The console shell owns the viewport: it is exactly `100dvh` and never scrolls
-itself. The sidebar is pinned at full height and the content column is the only
-scroll container, so navigation stays reachable however long a page gets. The
-topbar sticks to the top of that column.
+itself. The sidebar is pinned at full height and the content column is the
+only scroll container, so navigation stays reachable however long a page
+gets. The topbar sticks to the top of that column.
 
-## Responsive behaviour
+## 📱 Responsive behaviour
 
-The 900px breakpoint from the design drives real component swaps, not just CSS:
+The 900px breakpoint drives real component swaps, not just CSS:
 
 - Sidebar → slide-over drawer
 - Attendance table → one card per employee
 - Auth brand panel hides; a compact header takes its place
-
-## Scripts
-
-```bash
-npm run dev     npm run build     npm start     npm run lint
-```
