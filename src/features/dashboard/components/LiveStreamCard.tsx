@@ -1,0 +1,125 @@
+'use client';
+
+import { Avatar, Card, CardHeader, SkeletonRows } from '@/shared/ui';
+
+import { useClockInStream } from '../hooks/useDashboard';
+
+/** Rolling feed of gate matches as they happen. */
+export function LiveStreamCard() {
+  const { data, isPending } = useClockInStream();
+
+  return (
+    <Card style={{ flex: '1 1 330px', gap: 12 }}>
+      <CardHeader
+        title="Live clock-in stream"
+        meta={
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              padding: '4px 10px',
+              borderRadius: 'var(--radius-pill)',
+              background: 'var(--lucky-lime-100)',
+              color: 'var(--lucky-lime-600)',
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: 'var(--lucky-lime-500)',
+                animation: 'ftPulse 2s infinite',
+              }}
+            />
+            Live
+          </span>
+        }
+      />
+
+      {isPending ? (
+        <SkeletonRows rows={6} height={40} />
+      ) : (
+        data?.map((entry) => (
+          <div
+            key={`${entry.name}-${entry.time}`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '9px 0',
+              borderBottom: '1px solid var(--border-subtle)',
+            }}
+          >
+            <span style={{ position: 'relative', flex: 'none' }}>
+              <Avatar name={entry.name} size={36} />
+              <span
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  right: -3,
+                  bottom: -3,
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  background: 'var(--surface-card)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--success)' }} />
+              </span>
+            </span>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: 'var(--text-strong)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {entry.name}
+              </span>
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11.5,
+                  color: 'var(--text-faint)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {entry.camera}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flex: 'none' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, fontWeight: 500, color: 'var(--text-body)' }}>
+                {entry.time}
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: entry.late ? 'var(--warning)' : 'var(--success)',
+                }}
+              >
+                {entry.late ? 'LATE' : 'ON TIME'}
+              </span>
+            </div>
+          </div>
+        ))
+      )}
+    </Card>
+  );
+}
