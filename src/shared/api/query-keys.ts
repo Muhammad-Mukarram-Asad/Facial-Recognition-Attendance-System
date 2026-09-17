@@ -15,7 +15,6 @@ export const queryKeys = {
     all: () => ['dashboard'] as const,
     overview: (range: string) => ['dashboard', 'overview', range] as const,
     stream: () => ['dashboard', 'stream'] as const,
-    matrix: () => ['dashboard', 'matrix'] as const,
     risk: () => ['dashboard', 'risk'] as const,
   },
   attendance: {

@@ -114,6 +114,13 @@
   --border-strong: var(--neutral-300);
   --focus-ring: 0 0 0 3px rgba(46, 82, 224, 0.25);
 
+  /* ---- Chart series (shadcn chart convention) ---- */
+  --chart-1: var(--brand-blue-500);
+  --chart-2: var(--brand-teal-500);
+  --chart-3: var(--lucky-lime-500);
+  --chart-4: var(--warning);
+  --chart-5: var(--priority-high);
+
   /* ---- Spacing ---- */
   --space-1: 4px;
   --space-2: 8px;

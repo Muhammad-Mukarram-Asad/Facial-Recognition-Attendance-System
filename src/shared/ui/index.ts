@@ -13,3 +13,16 @@ export { Checkbox } from './Checkbox';
 export { EmptyState } from './EmptyState';
 export { Avatar } from './Avatar';
 export { Skeleton, SkeletonRows } from './Skeleton';
+export {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartStyle,
+  ChartTooltip,
+  ChartTooltipContent,
+  useChart,
+} from './chart';
+export type { ChartConfig } from './chart';
+export { Popover, PopoverContent, PopoverTrigger } from './Popover';
+export { Calendar } from './Calendar';
+export { Counter } from './Counter';

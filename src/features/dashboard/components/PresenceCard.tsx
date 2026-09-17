@@ -1,9 +1,11 @@
-import { Card } from '@/shared/ui';
+import { Card, Counter } from '@/shared/ui';
 
 import type { DashboardOverview } from '../types';
 
 const RADIUS = 52;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+const LEGEND_DELAY_MS = 300;
 
 export function PresenceCard({ presence }: { presence: DashboardOverview['presence'] }) {
   const offset = CIRCUMFERENCE * (1 - presence.rate / 100);
@@ -44,7 +46,7 @@ export function PresenceCard({ presence }: { presence: DashboardOverview['presen
           }}
         >
           <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-strong)' }}>
-            {presence.rate.toFixed(1)}%
+            <Counter value={presence.rate} decimals={1} />%
           </span>
           <span
             style={{
@@ -71,24 +73,24 @@ export function PresenceCard({ presence }: { presence: DashboardOverview['presen
             color: 'var(--text-strong)',
           }}
         >
-          {presence.present.toLocaleString()}
+          <Counter value={presence.present} />
           <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-faint)' }}>
             {' '}
-            / {presence.total.toLocaleString()}
+            / <Counter value={presence.total} />
           </span>
         </span>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 18px' }}>
           {[
-            { color: 'var(--success)', label: `${presence.onTime.toLocaleString()} on time` },
-            { color: 'var(--warning)', label: `${presence.late} late` },
-            { color: 'var(--priority-high)', label: `${presence.absent} absent` },
+            { color: 'var(--success)', suffix: 'on time', value: presence.onTime },
+            { color: 'var(--warning)', suffix: 'late', value: presence.late },
+            { color: 'var(--priority-high)', suffix: 'absent', value: presence.absent },
           ].map((item) => (
             <span
-              key={item.label}
+              key={item.suffix}
               style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: 'var(--text-body)' }}
             >
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: item.color }} />
-              {item.label}
+              <Counter value={item.value} delayMs={LEGEND_DELAY_MS} /> {item.suffix}
             </span>
           ))}
         </div>

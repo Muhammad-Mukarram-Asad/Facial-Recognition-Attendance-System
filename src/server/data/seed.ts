@@ -153,9 +153,6 @@ export const attendance: AttendanceRecord[] = employees.map((employee, i) => {
   };
 });
 
-/** Present/late/absent pattern per employee for the dashboard matrix — working days only (Mon–Fri). */
-export const WEEK_PATTERNS = ["ppppl", "plppp", "ppapp", "ppppp", "palpp", "ppppl"];
-
 /** 30-day history used on the employee profile heat map. */
 // HIDDEN — leave management. Was "ppplpApppalppplppApplpalppplpp" (A = leave); leave marks folded into "absent".
 export const MONTH_PATTERN = "ppplpapppalppplppapplpalppplpp";
@@ -462,7 +459,7 @@ export const recentPunches = [
 /** Headline figures for a 100-strong workforce. */
 export const WORKFORCE = {
   total: 100,
-  active: 97,
+  active: 88,
   present: 88,
   onTime: 80,
   late: 8,
@@ -471,4 +468,26 @@ export const WORKFORCE = {
   enrolledFaces: 97,
   gateCameras: 6,
   matchAccuracy: 99.2,
+  // DUMMY — replace with the strangers/watchlist feed once that API is integrated.
+  strangersDetected: 5,
+  blacklistedAttempts: 2,
 };
+
+/** Short codes for the gate cameras in `CAMERAS`, e.g. "nvr4 d12 Gate 2" -> "nvr4g2". */
+export const CAMERA_CODES: Record<string, string> = {
+  'nvr4 d12 Gate 2': 'nvr4g2',
+  'nvr2 d03 Gate 1': 'nvr2g1',
+  'nvr7 d21 Admin Block': 'nvr7ab',
+};
+
+/** DUMMY — per-camera breakdown for the strangers/blacklisted stat cards. Each
+ *  list's counts sum to WORKFORCE.strangersDetected / blacklistedAttempts. */
+export const STRANGERS_BY_CAMERA = [
+  { camera: CAMERA_CODES['nvr4 d12 Gate 2'], count: 3 },
+  { camera: CAMERA_CODES['nvr2 d03 Gate 1'], count: 2 },
+];
+
+export const BLACKLISTED_BY_CAMERA = [
+  { camera: CAMERA_CODES['nvr2 d03 Gate 1'], count: 1 },
+  { camera: CAMERA_CODES['nvr7 d21 Admin Block'], count: 1 },
+];

@@ -1,11 +1,22 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 
-import { toApiError } from '@/shared/api/client';
-import { Badge, Button, Card, Checkbox, SelectField, TextField } from '@/shared/ui';
+import { toApiError } from "@/shared/api/client";
+import {
+  Badge,
+  Button,
+  Card,
+  Checkbox,
+  SelectField,
+  TextField,
+} from "@/shared/ui";
 
-import { useCreateEmployee, useDeleteEmployee, useUpdateEmployee } from '../hooks/useEmployees';
+import {
+  useCreateEmployee,
+  useDeleteEmployee,
+  useUpdateEmployee,
+} from "../hooks/useEmployees";
 import {
   DEPARTMENTS,
   EMPLOYMENT_STATUSES,
@@ -14,7 +25,7 @@ import {
   employeeInputSchema,
   type Employee,
   type EmployeeInput,
-} from '../types';
+} from "../types";
 
 /** Narrows a raw employee record down to the editable form shape. */
 function toInput(employee: Employee): EmployeeInput {
@@ -25,12 +36,13 @@ function toInput(employee: Employee): EmployeeInput {
     phone: employee.phone,
     email: employee.email,
     dateOfBirth: employee.dateOfBirth,
-    department: employee.department as EmployeeInput['department'],
+    department: employee.department as EmployeeInput["department"],
     designation: employee.designation,
-    shift: employee.shift as EmployeeInput['shift'],
+    shift: employee.shift as EmployeeInput["shift"],
     joiningDate: employee.joiningDate,
     reportingManager: employee.reportingManager,
-    employmentStatus: employee.employmentStatus as EmployeeInput['employmentStatus'],
+    employmentStatus:
+      employee.employmentStatus as EmployeeInput["employmentStatus"],
     gracePeriodMinutes: employee.gracePeriodMinutes,
     gateCamera: employee.gateCamera,
     weeklyOff: employee.weeklyOff,
@@ -46,9 +58,9 @@ function SectionLabel({ children }: { children: string }) {
       style={{
         fontSize: 11,
         fontWeight: 700,
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase',
-        color: 'var(--text-faint)',
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        color: "var(--text-faint)",
       }}
     >
       {children}
@@ -57,8 +69,8 @@ function SectionLabel({ children }: { children: string }) {
 }
 
 const grid: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))',
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
   gap: 14,
   marginTop: 12,
 };
@@ -71,14 +83,20 @@ export interface EmployeeFormProps {
   onDeleted?: () => void;
 }
 
-export function EmployeeForm({ employee, onSaved, onDeleted }: EmployeeFormProps) {
+export function EmployeeForm({
+  employee,
+  onSaved,
+  onDeleted,
+}: EmployeeFormProps) {
   const isEdit = Boolean(employee);
   const create = useCreateEmployee();
   const update = useUpdateEmployee();
   const remove = useDeleteEmployee();
   const mutation = isEdit ? update : create;
 
-  const [values, setValues] = useState<EmployeeInput>(employee ? toInput(employee) : EMPTY_EMPLOYEE);
+  const [values, setValues] = useState<EmployeeInput>(
+    employee ? toInput(employee) : EMPTY_EMPLOYEE,
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
 
@@ -87,7 +105,9 @@ export function EmployeeForm({ employee, onSaved, onDeleted }: EmployeeFormProps
     (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       const target = event.target;
       const value =
-        target instanceof HTMLInputElement && target.type === 'checkbox' ? target.checked : target.value;
+        target instanceof HTMLInputElement && target.type === "checkbox"
+          ? target.checked
+          : target.value;
       setValues((prev) => ({ ...prev, [key]: value }) as EmployeeInput);
       setSaved(false);
     };
@@ -97,7 +117,8 @@ export function EmployeeForm({ employee, onSaved, onDeleted }: EmployeeFormProps
     const parsed = employeeInputSchema.safeParse(values);
     if (!parsed.success) {
       const next: Record<string, string> = {};
-      for (const issue of parsed.error.issues) next[String(issue.path[0])] = issue.message;
+      for (const issue of parsed.error.issues)
+        next[String(issue.path[0])] = issue.message;
       setErrors(next);
       return;
     }
@@ -127,26 +148,54 @@ export function EmployeeForm({ employee, onSaved, onDeleted }: EmployeeFormProps
 
   const handleDelete = () => {
     if (!employee) return;
-    if (!window.confirm(`Delete ${employee.name}? This can't be undone.`)) return;
+    if (!window.confirm(`Delete ${employee.name}? This can't be undone.`))
+      return;
     remove.mutate(employee.employeeId, { onSuccess: () => onDeleted?.() });
   };
 
   return (
-    <Card padding={22} style={{ flex: '1 1 460px', gap: 22 }}>
-      <form onSubmit={(event) => submit(event, false)} noValidate style={{ display: 'contents' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <h2 style={{ margin: 0, fontSize: 21, fontWeight: 700, letterSpacing: '-0.02em' }}>
-              {isEdit ? 'Edit employee' : 'Add employee'}
+    <Card padding={22} style={{ flex: "1 1 460px", gap: 22 }}>
+      <form
+        onSubmit={(event) => submit(event, false)}
+        noValidate
+        style={{ display: "contents" }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 14,
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 21,
+                fontWeight: 700,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {isEdit ? "Edit employee" : "Add employee"}
             </h2>
-            <p style={{ margin: 0, fontSize: 13.5, color: 'var(--text-muted)' }}>
+            <p
+              style={{ margin: 0, fontSize: 13.5, color: "var(--text-muted)" }}
+            >
               {isEdit
                 ? "Update the record below. Employee ID can't be changed."
-                : 'Fields marked with an asterisk are required for gate matching.'}
+                : "Fields marked with an asterisk are required for gate matching."}
             </p>
           </div>
-          <Badge tone={saved ? 'success' : 'brand'} dot={saved}>
-            {saved ? (isEdit ? 'Changes saved' : 'Employee saved') : isEdit ? 'Unsaved changes' : 'Draft autosaved'}
+          <Badge tone={saved ? "success" : "brand"} dot={saved}>
+            {saved
+              ? isEdit
+                ? "Changes saved"
+                : "Employee saved"
+              : isEdit
+                ? "Unsaved changes"
+                : "Draft autosaved"}
           </Badge>
         </div>
 
@@ -154,10 +203,10 @@ export function EmployeeForm({ employee, onSaved, onDeleted }: EmployeeFormProps
           <div
             role="alert"
             style={{
-              padding: '10px 14px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--priority-high-bg)',
-              color: 'var(--priority-high)',
+              padding: "10px 14px",
+              borderRadius: "var(--radius-sm)",
+              background: "var(--priority-high-bg)",
+              color: "var(--priority-high)",
               fontSize: 13,
               fontWeight: 600,
             }}
@@ -169,38 +218,101 @@ export function EmployeeForm({ employee, onSaved, onDeleted }: EmployeeFormProps
         <div>
           <SectionLabel>Identity</SectionLabel>
           <div style={grid}>
-            <TextField label="Full name *" placeholder="Imran Qureshi" value={values.name} error={errors.name} onChange={set('name')} />
+            <TextField
+              label="Full name *"
+              placeholder="Imran Qureshi"
+              value={values.name}
+              error={errors.name}
+              onChange={set("name")}
+            />
             <TextField
               label="Employee ID *"
               mono
               placeholder="LTM-00512"
               value={values.employeeId}
               error={errors.employeeId}
-              onChange={set('employeeId')}
+              onChange={set("employeeId")}
               disabled={isEdit}
             />
-            <TextField label="CNIC / national ID" mono placeholder="42101-1234567-8" value={values.cnic} onChange={set('cnic')} />
-            <TextField label="Mobile number" mono placeholder="+92 300 0000000" value={values.phone} onChange={set('phone')} />
-            <TextField label="Email" type="email" placeholder="imran.q@company.com" value={values.email} error={errors.email} onChange={set('email')} />
-            <TextField label="Date of birth" mono placeholder="dd / mm / yyyy" value={values.dateOfBirth} onChange={set('dateOfBirth')} />
+            <TextField
+              label="CNIC / national ID"
+              mono
+              placeholder="42101-1234567-8"
+              value={values.cnic}
+              onChange={set("cnic")}
+            />
+            <TextField
+              label="Mobile number"
+              mono
+              placeholder="+92 300 0000000"
+              value={values.phone}
+              onChange={set("phone")}
+            />
+            <TextField
+              label="Email"
+              type="email"
+              placeholder="imran.q@company.com"
+              value={values.email}
+              error={errors.email}
+              onChange={set("email")}
+            />
+            <TextField
+              label="Date of birth"
+              mono
+              placeholder="dd / mm / yyyy"
+              value={values.dateOfBirth}
+              onChange={set("dateOfBirth")}
+            />
           </div>
         </div>
 
-        <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+        <div style={{ height: 1, background: "var(--border-subtle)" }} />
 
         <div>
           <SectionLabel>Employment</SectionLabel>
           <div style={grid}>
-            <SelectField label="Department *" options={DEPARTMENTS} value={values.department} onChange={set('department')} />
-            <TextField label="Designation *" placeholder="Ring Frame Operator" value={values.designation} error={errors.designation} onChange={set('designation')} />
-            <SelectField label="Shift *" options={SHIFTS} value={values.shift} onChange={set('shift')} />
-            <TextField label="Joining date" mono placeholder="dd / mm / yyyy" value={values.joiningDate} onChange={set('joiningDate')} />
-            <TextField label="Reporting manager" placeholder="Shahid Mehmood" value={values.reportingManager} onChange={set('reportingManager')} />
-            <SelectField label="Employment status" options={EMPLOYMENT_STATUSES} value={values.employmentStatus} onChange={set('employmentStatus')} />
+            <SelectField
+              label="Department *"
+              options={DEPARTMENTS}
+              value={values.department}
+              onChange={set("department")}
+            />
+            <TextField
+              label="Designation *"
+              placeholder="Ring Frame Operator"
+              value={values.designation}
+              error={errors.designation}
+              onChange={set("designation")}
+            />
+            <SelectField
+              label="Shift *"
+              options={SHIFTS}
+              value={values.shift}
+              onChange={set("shift")}
+            />
+            <TextField
+              label="Joining date"
+              mono
+              placeholder="dd / mm / yyyy"
+              value={values.joiningDate}
+              onChange={set("joiningDate")}
+            />
+            <TextField
+              label="Reporting manager"
+              placeholder="Shahid Mehmood"
+              value={values.reportingManager}
+              onChange={set("reportingManager")}
+            />
+            <SelectField
+              label="Employment status"
+              options={EMPLOYMENT_STATUSES}
+              value={values.employmentStatus}
+              onChange={set("employmentStatus")}
+            />
           </div>
         </div>
 
-        <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+        <div style={{ height: 1, background: "var(--border-subtle)" }} />
 
         <div>
           <SectionLabel>Attendance rules</SectionLabel>
@@ -212,12 +324,23 @@ export function EmployeeForm({ employee, onSaved, onDeleted }: EmployeeFormProps
               placeholder="10"
               value={String(values.gracePeriodMinutes)}
               error={errors.gracePeriodMinutes}
-              onChange={set('gracePeriodMinutes')}
+              onChange={set("gracePeriodMinutes")}
             />
-            <TextField label="Assigned gate camera" mono placeholder="nvr4 d12 Gate 2" value={values.gateCamera} onChange={set('gateCamera')} />
-            <TextField label="Weekly off" placeholder="Sunday" value={values.weeklyOff} onChange={set('weeklyOff')} />
+            <TextField
+              label="Assigned gate camera"
+              mono
+              placeholder="nvr4 d12 Gate 2"
+              value={values.gateCamera}
+              onChange={set("gateCamera")}
+            />
+            <TextField
+              label="Weekly off"
+              placeholder="Sunday"
+              value={values.weeklyOff}
+              onChange={set("weeklyOff")}
+            />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+          {/* <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
             <Checkbox checked={values.overtimeEligible} onChange={set('overtimeEligible')}>
               Overtime eligible
             </Checkbox>
@@ -227,17 +350,17 @@ export function EmployeeForm({ employee, onSaved, onDeleted }: EmployeeFormProps
             <Checkbox checked={values.absenceSmsToManager} onChange={set('absenceSmsToManager')}>
               Send absence SMS to manager
             </Checkbox>
-          </div>
+          </div> */}
         </div>
 
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
+            display: "flex",
+            alignItems: "center",
             gap: 10,
-            flexWrap: 'wrap',
+            flexWrap: "wrap",
             paddingTop: 18,
-            borderTop: '1px solid var(--border-subtle)',
+            borderTop: "1px solid var(--border-subtle)",
           }}
         >
           {isEdit ? (
@@ -246,7 +369,13 @@ export function EmployeeForm({ employee, onSaved, onDeleted }: EmployeeFormProps
                 Save changes
               </Button>
               <span style={{ flex: 1, minWidth: 0 }} />
-              <Button type="button" variant="danger" icon="trash" onClick={handleDelete} loading={remove.isPending}>
+              <Button
+                type="button"
+                variant="danger"
+                icon="trash"
+                onClick={handleDelete}
+                loading={remove.isPending}
+              >
                 Delete employee
               </Button>
             </>
@@ -255,11 +384,21 @@ export function EmployeeForm({ employee, onSaved, onDeleted }: EmployeeFormProps
               <Button type="submit" icon="check" loading={create.isPending}>
                 Save employee
               </Button>
-              <Button type="button" variant="secondary" onClick={(event) => submit(event, true)} loading={create.isPending}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={(event) => submit(event, true)}
+                loading={create.isPending}
+              >
                 Save and add another
               </Button>
               <span style={{ flex: 1, minWidth: 0 }} />
-              <Button type="button" variant="ghost" icon="trash" onClick={() => setValues(EMPTY_EMPLOYEE)}>
+              <Button
+                type="button"
+                variant="ghost"
+                icon="trash"
+                onClick={() => setValues(EMPTY_EMPLOYEE)}
+              >
                 Discard draft
               </Button>
             </>

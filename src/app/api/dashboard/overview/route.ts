@@ -1,16 +1,28 @@
 import type { NextRequest } from 'next/server';
 
-import { hourlyCheckIns, weeklyPunctuality, WORKFORCE } from '@/server/data/seed';
+import { RANGE_SCALE, type DashboardRange } from '@/features/dashboard/types';
+import {
+  BLACKLISTED_BY_CAMERA,
+  hourlyCheckIns,
+  STRANGERS_BY_CAMERA,
+  weeklyPunctuality,
+  WORKFORCE,
+} from '@/server/data/seed';
 // HIDDEN — leave management.
 // import { getStore } from '@/server/lib/store';
 import { handleRouteError, ok } from '@/server/lib/response';
 
-/** Wider ranges soften the daily spikes; keeps the range switcher meaningful. */
-const RANGE_SCALE: Record<string, number> = { '24h': 1, '7d': 0.94, '30d': 0.89, '60d': 0.86 };
+/** Scales a per-camera breakdown so its counts still sum to `total` after rounding. */
+function scaleBreakdown(items: Array<{ camera: string; count: number }>, scale: number, total: number) {
+  const scaled = items.map((item) => Math.round(item.count * scale));
+  const remainder = total - scaled.reduce((sum, count) => sum + count, 0);
+  if (scaled.length > 0) scaled[0] += remainder;
+  return items.map((item, index) => ({ camera: item.camera, count: Math.max(0, scaled[index]) }));
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const range = request.nextUrl.searchParams.get('range') ?? '24h';
+    const range = (request.nextUrl.searchParams.get('range') ?? '24h') as DashboardRange;
     const scale = RANGE_SCALE[range] ?? 1;
 
     // HIDDEN — leave management.
@@ -18,6 +30,8 @@ export async function GET(request: NextRequest) {
     // const pending = store.leave.filter((l) => l.status === 'Pending');
     const present = Math.round(WORKFORCE.present * scale);
     const onTime = Math.round(WORKFORCE.onTime * scale);
+    const strangers = Math.round(WORKFORCE.strangersDetected * scale);
+    const blacklisted = Math.round(WORKFORCE.blacklistedAttempts * scale);
 
     return ok({
       range,
@@ -35,6 +49,18 @@ export async function GET(request: NextRequest) {
       },
       absence: {
         total: WORKFORCE.total - present,
+      },
+      device: {
+        enrolledFaces: WORKFORCE.enrolledFaces,
+        gateCameras: WORKFORCE.gateCameras,
+        matchAccuracy: WORKFORCE.matchAccuracy,
+      },
+      // DUMMY — replace with the strangers/watchlist feed once that API is integrated.
+      security: {
+        strangers,
+        blacklisted,
+        strangersByCamera: scaleBreakdown(STRANGERS_BY_CAMERA, scale, strangers),
+        blacklistedByCamera: scaleBreakdown(BLACKLISTED_BY_CAMERA, scale, blacklisted),
       },
       // HIDDEN — leave management.
       // pendingLeave: {

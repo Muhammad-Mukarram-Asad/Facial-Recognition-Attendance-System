@@ -1,13 +1,11 @@
 import { getValidated } from '@/shared/api/client';
 
 import {
-  matrixSchema,
   overviewSchema,
   riskListSchema,
   streamSchema,
   type DashboardOverview,
   type DashboardRange,
-  type MatrixRow,
   type RiskEntry,
   type StreamEntry,
 } from '../types';
@@ -19,6 +17,4 @@ export const dashboardApi = {
   risk: (): Promise<RiskEntry[]> => getValidated('/dashboard/risk', riskListSchema),
 
   stream: (): Promise<StreamEntry[]> => getValidated('/dashboard/stream', streamSchema),
-
-  matrix: (): Promise<MatrixRow[]> => getValidated('/dashboard/matrix', matrixSchema),
 };

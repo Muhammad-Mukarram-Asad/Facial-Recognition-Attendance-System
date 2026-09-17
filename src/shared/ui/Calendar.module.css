@@ -1,0 +1,136 @@
+.root {
+  --rdp-accent-color: var(--interactive-primary);
+  font-family: var(--font-sans);
+}
+
+.months {
+  display: flex;
+  gap: 20px;
+  position: relative;
+}
+
+.month {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.monthCaption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.nav {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.navButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.navButton:hover {
+  background: var(--surface-sunken);
+  color: var(--text-strong);
+}
+
+.monthGrid {
+  border-collapse: collapse;
+}
+
+.weekdays {
+  display: flex;
+}
+
+.weekday {
+  width: 34px;
+  height: 24px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.week {
+  display: flex;
+}
+
+.day {
+  width: 34px;
+  height: 34px;
+  text-align: center;
+  padding: 0;
+}
+
+.dayButton {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-xs);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-body);
+  cursor: pointer;
+}
+
+.dayButton:hover {
+  background: var(--surface-sunken);
+}
+
+.today .dayButton {
+  color: var(--interactive-primary);
+  font-weight: 700;
+}
+
+.outside .dayButton {
+  color: var(--text-faint);
+}
+
+.disabled .dayButton {
+  color: var(--text-faint);
+  cursor: not-allowed;
+}
+
+.selected .dayButton {
+  background: var(--interactive-primary);
+  color: var(--text-on-inverse);
+}
+
+.range_start .dayButton,
+.range_end .dayButton {
+  background: var(--interactive-primary);
+  color: var(--text-on-inverse);
+}
+
+.range_middle .dayButton {
+  background: var(--brand-indigo-100);
+  color: var(--text-brand);
+  border-radius: var(--radius-xs);
+}

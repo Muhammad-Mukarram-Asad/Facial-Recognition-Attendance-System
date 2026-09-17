@@ -9,6 +9,9 @@ export const RANGE_OPTIONS = [
 
 export type DashboardRange = (typeof RANGE_OPTIONS)[number]['value'];
 
+/** Wider ranges soften the daily spikes; keeps the range switcher meaningful. */
+export const RANGE_SCALE: Record<DashboardRange, number> = { '24h': 1, '7d': 0.94, '30d': 0.89, '60d': 0.86 };
+
 export const overviewSchema = z.object({
   range: z.string(),
   presence: z.object({
@@ -25,6 +28,18 @@ export const overviewSchema = z.object({
   }),
   absence: z.object({
     total: z.number(),
+  }),
+  device: z.object({
+    enrolledFaces: z.number(),
+    gateCameras: z.number(),
+    matchAccuracy: z.number(),
+  }),
+  // DUMMY — replace with the strangers/watchlist feed once that API is integrated.
+  security: z.object({
+    strangers: z.number(),
+    blacklisted: z.number(),
+    strangersByCamera: z.array(z.object({ camera: z.string(), count: z.number() })),
+    blacklistedByCamera: z.array(z.object({ camera: z.string(), count: z.number() })),
   }),
   // HIDDEN — leave management.
   // pendingLeave: z.object({
@@ -52,18 +67,9 @@ export const streamEntrySchema = z.object({
   late: z.boolean(),
 });
 
-export const matrixRowSchema = z.object({
-  name: z.string(),
-  employeeId: z.string(),
-  department: z.string(),
-  days: z.array(z.enum(['present', 'late', 'absent' /* HIDDEN — leave management. , 'leave' */])),
-});
-
 export const riskListSchema = z.array(riskEntrySchema);
 export const streamSchema = z.array(streamEntrySchema);
-export const matrixSchema = z.array(matrixRowSchema);
 
 export type DashboardOverview = z.infer<typeof overviewSchema>;
 export type RiskEntry = z.infer<typeof riskEntrySchema>;
 export type StreamEntry = z.infer<typeof streamEntrySchema>;
-export type MatrixRow = z.infer<typeof matrixRowSchema>;

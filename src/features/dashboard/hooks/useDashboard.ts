@@ -31,10 +31,3 @@ export function useClockInStream() {
     refetchInterval: 15_000,
   });
 }
-
-export function useStatusMatrix() {
-  return useQuery({
-    queryKey: queryKeys.dashboard.matrix(),
-    queryFn: dashboardApi.matrix,
-  });
-}

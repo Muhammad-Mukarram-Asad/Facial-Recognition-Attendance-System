@@ -1,12 +1,6 @@
 import { APP_CONFIG } from '@/shared/config/app';
 import { Icon } from '@/shared/ui';
 
-const HIGHLIGHTS = [
-  { value: '99.2%', label: 'Match accuracy' },
-  { value: '1,300', label: 'Enrolled faces' },
-  { value: '6', label: 'Gate cameras' },
-];
-
 /** The indigo marketing half of the auth split-screen. */
 export function AuthBrandPanel() {
   return (
@@ -94,24 +88,6 @@ export function AuthBrandPanel() {
           Faces are matched at the gate in under 300&nbsp;ms. Punctuality, absence and shift
           compliance land on your dashboard before the shift starts.
         </p>
-      </div>
-
-      <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
-        {HIGHLIGHTS.map((item) => (
-          <div key={item.label} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em' }}>{item.value}</span>
-            <span
-              style={{
-                fontSize: 11,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: 'var(--text-on-inverse-muted)',
-              }}
-            >
-              {item.label}
-            </span>
-          </div>
-        ))}
       </div>
     </div>
   );

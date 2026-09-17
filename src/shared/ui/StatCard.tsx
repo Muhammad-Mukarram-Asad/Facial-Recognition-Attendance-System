@@ -1,3 +1,5 @@
+import type { CSSProperties, ReactNode } from 'react';
+
 import type { Tone } from '@/shared/types';
 
 import { Card } from './Card';
@@ -12,20 +14,22 @@ const VALUE_TONE: Partial<Record<Tone, string>> = {
 
 export interface StatSub {
   label: string;
-  value: string;
+  value: ReactNode;
   tone?: Tone;
 }
 
 export interface StatCardProps {
   label: string;
-  value: string;
+  value: ReactNode;
   valueTone?: Tone;
   subs?: StatSub[];
+  style?: CSSProperties;
+  padding?: number | string;
 }
 
-export function StatCard({ label, value, valueTone, subs }: StatCardProps) {
+export function StatCard({ label, value, valueTone, subs, style, padding = '18px 20px' }: StatCardProps) {
   return (
-    <Card padding="18px 20px" style={{ gap: 10, justifyContent: 'space-between' }}>
+    <Card padding={padding} style={{ gap: 8, justifyContent: 'space-between', ...style }}>
       <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted)' }}>{label}</span>
       <span
         style={{
@@ -39,7 +43,7 @@ export function StatCard({ label, value, valueTone, subs }: StatCardProps) {
         {value}
       </span>
       {subs && subs.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 10px' }}>
           {subs.map((sub) => (
             <span key={sub.label} style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               {sub.label}{' '}

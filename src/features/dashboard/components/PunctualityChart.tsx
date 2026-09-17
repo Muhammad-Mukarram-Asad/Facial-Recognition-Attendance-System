@@ -1,15 +1,39 @@
+'use client';
+
+import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
+
 import { Card, CardHeader } from '@/shared/ui';
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/shared/ui';
 
-import type { DashboardOverview } from '../types';
+import { RANGE_SCALE, type DashboardRange } from '../types';
 
-const LEGEND = [
-  { color: 'var(--success)', label: 'On time' },
-  { color: 'var(--warning)', label: 'Late' },
-  { color: 'var(--priority-high)', label: 'Absent' },
+import type { ChartConfig } from '@/shared/ui';
+
+// Same shape as shadcn/ui's chart demo dataset.
+const BASE_DATA = [
+  { month: 'January', desktop: 186, mobile: 80 },
+  { month: 'February', desktop: 305, mobile: 200 },
+  { month: 'March', desktop: 237, mobile: 120 },
+  { month: 'April', desktop: 73, mobile: 190 },
+  { month: 'May', desktop: 209, mobile: 130 },
+  { month: 'June', desktop: 214, mobile: 140 },
 ];
 
-/** Stacked bars: on-time / late / absent split for each day of the week. */
-export function PunctualityChart({ data }: { data: DashboardOverview['weeklyPunctuality'] }) {
+const chartConfig = {
+  desktop: { label: 'Desktop', color: 'var(--chart-1)' },
+  mobile: { label: 'Mobile', color: 'var(--chart-2)' },
+} satisfies ChartConfig;
+
+/** Grouped bar chart — shadcn/ui "Bar Chart - Multiple" pattern with its stock dummy data,
+ *  scaled by the selected date range so the range tabs stay interactive. */
+export function PunctualityChart({ range }: { range: DashboardRange }) {
+  const scale = RANGE_SCALE[range] ?? 1;
+  const chartData = BASE_DATA.map((point) => ({
+    month: point.month,
+    desktop: Math.round(point.desktop * scale),
+    mobile: Math.round(point.mobile * scale),
+  }));
+
   return (
     <Card style={{ flex: '1 1 300px', gap: 16 }}>
       <CardHeader
@@ -17,60 +41,23 @@ export function PunctualityChart({ data }: { data: DashboardOverview['weeklyPunc
         meta={<span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--success)' }}>+3.1%</span>}
       />
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 170 }}>
-        {data.map((day, index) => (
-          <div
-            key={day.day}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'flex-end',
-              gap: 6,
-              height: '100%',
-            }}
-          >
-            <div
-              title={`${day.day}: ${day.onTime} on time, ${day.late} late, ${day.absent} absent`}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
-                transformOrigin: 'bottom',
-                animation: `ftGrow ${520 + index * 40}ms var(--ease-out) both`,
-              }}
-            >
-              <span style={{ height: day.onTime, borderRadius: '6px 6px 0 0', background: 'var(--success)' }} />
-              <span style={{ height: day.late, background: 'var(--warning)' }} />
-              <span style={{ height: day.absent, borderRadius: '0 0 6px 6px', background: 'var(--priority-high)' }} />
-            </div>
-            <span style={{ textAlign: 'center', fontSize: 11, fontWeight: 600, color: 'var(--text-faint)' }}>
-              {day.day}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div
-        style={{
-          display: 'flex',
-          gap: 14,
-          flexWrap: 'wrap',
-          paddingTop: 12,
-          borderTop: '1px solid var(--border-subtle)',
-        }}
-      >
-        {LEGEND.map((item) => (
-          <span
-            key={item.label}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}
-          >
-            <span style={{ width: 8, height: 8, borderRadius: 2, background: item.color }} />
-            {item.label}
-          </span>
-        ))}
-      </div>
+      <ChartContainer config={chartConfig} style={{ aspectRatio: 'auto', height: 170, width: '100%' }}>
+        <BarChart data={chartData} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
+          <CartesianGrid vertical={false} stroke="var(--border-subtle)" />
+          <XAxis
+            dataKey="month"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            tickFormatter={(value: string) => value.slice(0, 3)}
+            tick={{ fontSize: 11, fill: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}
+          />
+          <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dashed" />} />
+          <ChartLegend content={<ChartLegendContent />} />
+          <Bar dataKey="desktop" fill="var(--color-desktop)" radius={4} />
+          <Bar dataKey="mobile" fill="var(--color-mobile)" radius={4} />
+        </BarChart>
+      </ChartContainer>
     </Card>
   );
 }
