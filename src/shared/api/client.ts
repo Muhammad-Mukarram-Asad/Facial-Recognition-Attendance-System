@@ -1,7 +1,8 @@
-import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
-import type { ZodType } from 'zod';
+import axios, { AxiosError, type AxiosRequestConfig } from "axios";
+import type { ZodType } from "zod";
 
-import type { ApiError } from '@/shared/types';
+import { getAuthToken } from "@/shared/lib/auth-token";
+import type { ApiError } from "@/shared/types";
 
 /**
  * Single axios instance for the whole app.
@@ -11,29 +12,31 @@ import type { ApiError } from '@/shared/types';
  * the mock for production without touching feature code.
  */
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api',
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api",
+  headers: { "Content-Type": "application/json" },
   timeout: 15_000,
 });
 
 apiClient.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const token = window.localStorage.getItem('facetrack.token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-  }
+  const token = getAuthToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
 export function toApiError(error: unknown): ApiError {
   if (error instanceof AxiosError) {
-    const payload = error.response?.data as { message?: string; code?: string } | undefined;
+    const payload = error.response?.data as
+      | { message?: string; code?: string }
+      | undefined;
     return {
       message: payload?.message ?? error.message,
       status: error.response?.status,
       code: payload?.code ?? error.code,
     };
   }
-  return { message: error instanceof Error ? error.message : 'Unexpected error' };
+  return {
+    message: error instanceof Error ? error.message : "Unexpected error",
+  };
 }
 
 /**
@@ -69,6 +72,9 @@ export async function patchValidated<T>(
   return schema.parse(data);
 }
 
-export async function del(url: string, config?: AxiosRequestConfig): Promise<void> {
+export async function del(
+  url: string,
+  config?: AxiosRequestConfig,
+): Promise<void> {
   await apiClient.delete(url, config);
 }

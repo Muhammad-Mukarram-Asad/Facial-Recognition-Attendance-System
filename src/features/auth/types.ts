@@ -46,3 +46,47 @@ export type SignInInput = z.infer<typeof signInSchema>;
 export type SignUpInput = z.infer<typeof signUpSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ForgotPasswordResult = z.infer<typeof forgotPasswordResultSchema>;
+
+/**
+ * The real backend's user shape (POST /auth/signin and GET /me), confirmed
+ * against actual responses — distinct from the mock SessionUser above,
+ * which only sign-up/forgot-password (still mock-backed) use.
+ */
+export const authRoleSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  permissions: z.array(z.string()),
+});
+
+export const authUserSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  email: z.string(),
+  role_id: z.number(),
+  email_verified_at: z.string().nullable().optional(),
+  status: z.boolean(),
+  is_deletable: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  role: authRoleSchema,
+});
+
+export const signInResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  data: z.object({
+    user: authUserSchema,
+    token: z.string(),
+    token_type: z.string(),
+    expires_in: z.number(),
+  }),
+});
+
+export const meResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  data: authUserSchema,
+});
+
+export type AuthRole = z.infer<typeof authRoleSchema>;
+export type AuthUser = z.infer<typeof authUserSchema>;

@@ -10,7 +10,7 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
   hint?: string;
 }
 
-export function TextField({ label, mono, error, hint, id, style, ...rest }: TextFieldProps) {
+export function TextField({ label, mono, error, hint, id, style, className, disabled, ...rest }: TextFieldProps) {
   const generated = useId();
   const inputId = id ?? generated;
   return (
@@ -19,14 +19,16 @@ export function TextField({ label, mono, error, hint, id, style, ...rest }: Text
       <input
         id={inputId}
         aria-invalid={error ? true : undefined}
+        disabled={disabled}
+        className={`disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed ${className ?? ''}`}
         style={{
           width: '100%',
           boxSizing: 'border-box',
           padding: '11px 12px',
           borderRadius: 'var(--radius-sm)',
           border: `1px solid ${error ? 'var(--priority-high)' : 'var(--border-default)'}`,
-          background: 'var(--surface-card)',
-          color: 'var(--text-strong)',
+          background: disabled ? undefined : 'var(--surface-card)',
+          color: disabled ? undefined : 'var(--text-strong)',
           fontSize: 14,
           fontFamily: mono ? 'var(--font-mono)' : 'var(--font-sans)',
           outline: 'none',
