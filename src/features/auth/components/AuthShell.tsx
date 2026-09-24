@@ -1,12 +1,13 @@
-'use client';
+"use client";
 
-import type { ReactNode } from 'react';
+import type { ReactNode } from "react";
 
-import { APP_CONFIG } from '@/shared/config/app';
-import { useIsDesktop } from '@/shared/hooks/useMediaQuery';
-import { Icon } from '@/shared/ui';
+import { APP_CONFIG } from "@/shared/config/app";
+import { useIsDesktop } from "@/shared/hooks/useMediaQuery";
+import { Icon } from "@/shared/ui";
 
-import { AuthBrandPanel } from './AuthBrandPanel';
+import { AuthBrandPanel } from "./AuthBrandPanel";
+import Image from "next/image";
 
 /** Split-screen auth layout: brand panel on desktop, compact header on mobile. */
 export function AuthShell({ children }: { children: ReactNode }) {
@@ -15,56 +16,76 @@ export function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div
       style={{
-        height: '100vh',
-        display: 'flex',
-        flexWrap: 'wrap',
-        overflow: 'hidden',
-        background: 'var(--surface-app)',
+        height: "100vh",
+        display: "flex",
+        flexWrap: "wrap",
+        overflow: "hidden",
+        background: "var(--surface-app)",
       }}
     >
       {isDesktop && <AuthBrandPanel />}
 
       <div
         style={{
-          flex: '1 1 380px',
+          flex: "1 1 380px",
           minWidth: 0,
-          height: '100vh',
-          overflowY: 'auto',
-          boxSizing: 'border-box',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '32px 22px',
+          height: "100vh",
+          overflowY: "auto",
+          boxSizing: "border-box",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "32px 22px",
         }}
       >
         <div
           style={{
-            width: '100%',
+            width: "100%",
             maxWidth: 404,
-            display: 'flex',
-            flexDirection: 'column',
+            display: "flex",
+            flexDirection: "column",
             gap: 20,
-            animation: 'ftFadeUp 420ms var(--ease-out) both',
+            animation: "ftFadeUp 420ms var(--ease-out) both",
           }}
         >
           {!isDesktop && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 4 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                paddingBottom: 4,
+              }}
+            >
               <span
                 style={{
                   width: 34,
                   height: 34,
                   borderRadius: 10,
-                  background: 'var(--gradient-brand)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  flex: 'none',
+                  background: "var(--gradient-brand)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  flex: "none",
                 }}
               >
-                <Icon name="scan-face" size={19} />
+                {/* <Icon name="scan-face" size={19} /> */}
+                <Image
+                  src={"/JBS OmniVision logo.svg"}
+                  alt="JBS-logo"
+                  width={80}
+                  height={80}
+                />
               </span>
-              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-strong)' }}>
+              <span
+                style={{
+                  fontSize: 16,
+                  fontWeight: 800,
+                  letterSpacing: "-0.02em",
+                  color: "var(--text-strong)",
+                }}
+              >
                 {APP_CONFIG.brandName}
               </span>
             </div>

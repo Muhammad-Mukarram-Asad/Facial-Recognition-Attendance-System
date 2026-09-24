@@ -58,13 +58,13 @@ export function DashboardView() {
           Filters
         </Button>
         */}
-        <Button
+        {/* <Button
           size="sm"
           icon="download"
           onClick={() => router.push(ROUTES.reports)}
         >
           Export
-        </Button>
+        </Button> */}
       </PageToolbar>
 
       {isError ? (
