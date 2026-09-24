@@ -5,7 +5,7 @@ export const ROUTES = {
   dashboard: "/dashboard",
   attendance: "/attendance-records",
   employees: "/employees",
-  reports: "/reports",
+  // reports: "/reports",
   profile: "/employee-profile",
   profileFor: (employeeId: string) => `/employee-profile/${employeeId}`,
 
@@ -50,12 +50,12 @@ export const NAV_ITEMS: NavItem[] = [
   },
   // HIDDEN — leave management.
   // { id: 'leave', label: 'Leave Requests', icon: 'calendar-check', href: ROUTES.leave },
-  {
-    id: "reports",
-    label: "Reports",
-    icon: "file-chart-column",
-    href: ROUTES.reports,
-  },
+  // {
+  //   id: "reports",
+  //   label: "Reports",
+  //   icon: "file-chart-column",
+  //   href: ROUTES.reports,
+  // },
   {
     id: "profile",
     label: "Employees",
@@ -69,8 +69,8 @@ export const PAGE_META: Record<string, { crumb: string; title: string }> = {
   [ROUTES.dashboard]: { crumb: "Overview", title: "Attendance analytics" },
   [ROUTES.attendance]: { crumb: "Attendance", title: "Daily records" },
   [ROUTES.employees]: { crumb: "Workforce", title: "Add employee" },
-  [ROUTES.reports]: { crumb: "Exports", title: "Reports" },
   [ROUTES.profile]: { crumb: "Workforce", title: "Employees" },
+  // [ROUTES.reports]: { crumb: "Exports", title: "Reports" },
   // HIDDEN — leave management.
   // [ROUTES.leave]: { crumb: 'Requests', title: 'Leave approvals' },
 };

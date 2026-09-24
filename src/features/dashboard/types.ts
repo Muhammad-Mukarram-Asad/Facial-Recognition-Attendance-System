@@ -73,3 +73,16 @@ export const streamSchema = z.array(streamEntrySchema);
 export type DashboardOverview = z.infer<typeof overviewSchema>;
 export type RiskEntry = z.infer<typeof riskEntrySchema>;
 export type StreamEntry = z.infer<typeof streamEntrySchema>;
+
+/**
+ * A single frame from GET /api/v1/attendance/stream (SSE), confirmed
+ * against the API doc's example event. No employee name is included —
+ * just the id — so the UI shows "Employee #<id>" until there's a lookup.
+ */
+export interface AttendanceStreamEvent {
+  event_id: number;
+  employee_id: number;
+  timestamp: string;
+  event_type: string;
+  location: string;
+}

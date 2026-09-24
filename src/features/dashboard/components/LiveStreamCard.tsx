@@ -1,12 +1,13 @@
 'use client';
 
-import { Avatar, Card, CardHeader, SkeletonRows } from '@/shared/ui';
+import { Avatar, Card, CardHeader, EmptyState, SkeletonRows } from '@/shared/ui';
+import { formatClock } from '@/shared/lib/format';
 
-import { useClockInStream } from '../hooks/useDashboard';
+import { useAttendanceStream } from '../hooks/useAttendanceStream';
 
-/** Rolling feed of gate matches as they happen. */
+/** Rolling feed of gate matches as they happen — GET /api/v1/attendance/stream (SSE). */
 export function LiveStreamCard() {
-  const { data, isPending } = useClockInStream();
+  const { data, isPending, isConnected } = useAttendanceStream();
 
   return (
     <Card style={{ flex: '1 1 330px', gap: 12 }}>
@@ -20,8 +21,8 @@ export function LiveStreamCard() {
               gap: 7,
               padding: '4px 10px',
               borderRadius: 'var(--radius-pill)',
-              background: 'var(--lucky-lime-100)',
-              color: 'var(--lucky-lime-600)',
+              background: isConnected ? 'var(--lucky-lime-100)' : 'var(--surface-subtle)',
+              color: isConnected ? 'var(--lucky-lime-600)' : 'var(--text-faint)',
               fontSize: 11,
               fontWeight: 700,
               letterSpacing: '0.06em',
@@ -34,21 +35,23 @@ export function LiveStreamCard() {
                 width: 7,
                 height: 7,
                 borderRadius: '50%',
-                background: 'var(--lucky-lime-500)',
-                animation: 'ftPulse 2s infinite',
+                background: isConnected ? 'var(--lucky-lime-500)' : 'var(--text-faint)',
+                animation: isConnected ? 'ftPulse 2s infinite' : 'none',
               }}
             />
-            Live
+            {isConnected ? 'Live' : 'Reconnecting…'}
           </span>
         }
       />
 
       {isPending ? (
         <SkeletonRows rows={6} height={40} />
+      ) : data.length === 0 ? (
+        <EmptyState message="No gate activity yet" icon="scan-face" />
       ) : (
-        data?.map((entry) => (
+        data.map((event) => (
           <div
-            key={`${entry.name}-${entry.time}`}
+            key={event.event_id}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -58,7 +61,7 @@ export function LiveStreamCard() {
             }}
           >
             <span style={{ position: 'relative', flex: 'none' }}>
-              <Avatar name={entry.name} size={36} />
+              <Avatar name={`Employee ${event.employee_id}`} size={36} />
               <span
                 aria-hidden
                 style={{
@@ -88,7 +91,8 @@ export function LiveStreamCard() {
                   textOverflow: 'ellipsis',
                 }}
               >
-                {entry.name}
+                {/* No employee name in the event payload — just an id. */}
+                Employee #{event.employee_id}
               </span>
               <span
                 style={{
@@ -100,21 +104,21 @@ export function LiveStreamCard() {
                   textOverflow: 'ellipsis',
                 }}
               >
-                {entry.camera}
+                {event.location}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flex: 'none' }}>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, fontWeight: 500, color: 'var(--text-body)' }}>
-                {entry.time}
+                {formatClock(new Date(event.timestamp))}
               </span>
               <span
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
-                  color: entry.late ? 'var(--warning)' : 'var(--success)',
+                  color: event.event_type === 'exit' ? 'var(--warning)' : 'var(--success)',
                 }}
               >
-                {entry.late ? 'LATE' : 'ON TIME'}
+                {event.event_type.toUpperCase()}
               </span>
             </div>
           </div>

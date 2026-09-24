@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { queryKeys } from '@/shared/api/query-keys';
+import { queryKeys } from "@/shared/api/query-keys";
 
-import { employeesApi } from '../api/employees.api';
-import type { EmployeeInput, EmployeeQuery } from '../types';
+import { employeesApi } from "../api/employees.api";
+import type { EmployeeQuery, EmployeeWritePayload } from "../types";
 
 export function useEmployees(query: EmployeeQuery = {}) {
   return useQuery({
@@ -32,7 +32,13 @@ export function useEmployeeDetail(employeeId: string) {
 export function useCreateEmployee() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: employeesApi.create,
+    mutationFn: ({
+      input,
+      photo,
+    }: {
+      input: EmployeeWritePayload;
+      photo: File;
+    }) => employeesApi.create(input, photo),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.employees.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all() });
@@ -43,8 +49,13 @@ export function useCreateEmployee() {
 export function useUpdateEmployee() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ employeeId, input }: { employeeId: string; input: EmployeeInput }) =>
-      employeesApi.update(employeeId, input),
+    mutationFn: ({
+      employeeId,
+      input,
+    }: {
+      employeeId: string;
+      input: EmployeeWritePayload;
+    }) => employeesApi.update(employeeId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.employees.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all() });
