@@ -1,12 +1,18 @@
-'use client';
+"use client";
 
-import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from 'react';
-import type { ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useSyncExternalStore,
+} from "react";
+import type { ReactNode } from "react";
 
-export type Theme = 'light' | 'dark';
+export type Theme = "light" | "dark";
 
-const STORAGE_KEY = 'facetrack.theme';
-const THEME_EVENT = 'facetrack:themechange';
+const STORAGE_KEY = "facetrack.theme";
+const THEME_EVENT = "facetrack:themechange";
 
 /**
  * The <html data-theme> attribute is the single source of truth — the inline
@@ -19,11 +25,11 @@ function subscribe(onStoreChange: () => void): () => void {
 }
 
 function getSnapshot(): Theme {
-  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
 }
 
 function getServerSnapshot(): Theme {
-  return 'light';
+  return "light";
 }
 
 interface ThemeContextValue {
@@ -40,7 +46,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setTheme = useCallback((next: Theme) => {
     document.documentElement.dataset.theme = next;
     try {
-      window.localStorage.setItem(STORAGE_KEY, next);
+      window.sessionStorage.setItem(STORAGE_KEY, next);
     } catch {
       // Private browsing can refuse writes; the theme still applies for this session.
     }
@@ -48,17 +54,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme(getSnapshot() === 'dark' ? 'light' : 'dark');
+    setTheme(getSnapshot() === "dark" ? "light" : "dark");
   }, [setTheme]);
 
-  const value = useMemo(() => ({ theme, toggleTheme, setTheme }), [theme, toggleTheme, setTheme]);
+  const value = useMemo(
+    () => ({ theme, toggleTheme, setTheme }),
+    [theme, toggleTheme, setTheme],
+  );
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  );
 }
 
 export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error('useTheme must be used inside <ThemeProvider>');
+  if (!ctx) throw new Error("useTheme must be used inside <ThemeProvider>");
   return ctx;
 }
 
