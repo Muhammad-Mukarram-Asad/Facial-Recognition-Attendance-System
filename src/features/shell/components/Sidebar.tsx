@@ -10,6 +10,8 @@ import { initials } from "@/shared/lib/format";
 import { Icon } from "@/shared/ui";
 import Image from "next/image";
 
+import { NavPendingHint } from "./NavPendingHint";
+
 export interface SidebarProps {
   /** Mobile drawer fills its container; the desktop rail is a rounded card. */
   variant?: "rail" | "drawer";
@@ -111,6 +113,7 @@ export function Sidebar({ variant = "rail", onNavigate }: SidebarProps) {
             >
               <Icon name={item.icon} size={17} />
               {item.label}
+              <NavPendingHint />
             </Link>
           );
         })}

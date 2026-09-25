@@ -13,9 +13,15 @@ export const queryKeys = {
   },
   dashboard: {
     all: () => ['dashboard'] as const,
+    overviewAll: () => ['dashboard', 'overview'] as const,
     overview: (range: string) => ['dashboard', 'overview', range] as const,
     stream: () => ['dashboard', 'stream'] as const,
     risk: () => ['dashboard', 'risk'] as const,
+  },
+  /** Gate events from the SSE stream — kept apart from `attendance` so its invalidations never touch the feed. */
+  liveAttendance: {
+    today: () => ['live-attendance', 'today'] as const,
+    connection: () => ['live-attendance', 'connection'] as const,
   },
   attendance: {
     all: () => ['attendance'] as const,

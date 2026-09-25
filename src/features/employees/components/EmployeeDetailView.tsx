@@ -3,9 +3,10 @@
 import { useRouter } from 'next/navigation';
 
 import { ROUTES } from '@/shared/config/routes';
-import { Button, Card, EmptyState, Skeleton } from '@/shared/ui';
+import { Button, Card, EmptyState } from '@/shared/ui';
 
 import { useEmployeeDetail } from '../hooks/useEmployees';
+import { EmployeeDetailLoading } from './EmployeeDetailLoading';
 import { EmployeeForm } from './EmployeeForm';
 import { FaceEnrollmentCard } from './FaceEnrollmentCard';
 
@@ -37,18 +38,7 @@ export function EmployeeDetailView({ employeeId }: { employeeId: string }) {
     );
   }
 
-  if (isPending || !employee) {
-    return (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
-        <div style={{ flex: '1 1 460px', minWidth: 0 }}>
-          <Skeleton height={520} radius={14} />
-        </div>
-        <div style={{ flex: '1 1 280px', minWidth: 0 }}>
-          <Skeleton height={320} radius={14} />
-        </div>
-      </div>
-    );
-  }
+  if (isPending || !employee) return <EmployeeDetailLoading />;
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { useSession } from '@/features/auth/hooks/useSession';
@@ -18,10 +19,12 @@ export interface TopbarProps {
   // onToggleNotifications: () => void;
 }
 
-function metaFor(pathname: string) {
+function metaFor(pathname: string): { crumb: string; title: string; backHref?: string } {
   if (PAGE_META[pathname]) return PAGE_META[pathname];
-  // Profile detail routes carry an employee id segment.
-  if (pathname.startsWith(ROUTES.profile)) return PAGE_META[ROUTES.profile];
+  // Profile detail routes carry an employee id segment, and step back to the list.
+  if (pathname.startsWith(`${ROUTES.profile}/`)) {
+    return { crumb: PAGE_META[ROUTES.profile].crumb, title: 'Employee details', backHref: ROUTES.profile };
+  }
   return PAGE_META[ROUTES.dashboard];
 }
 
@@ -49,7 +52,7 @@ export function Topbar({ onOpenMenu }: TopbarProps) {
   // HIDDEN — notification system.
   // const { data: notifications } = useNotifications();
 
-  const { crumb, title } = metaFor(pathname);
+  const { crumb, title, backHref } = metaFor(pathname);
   // const unread = notifications?.unreadCount ?? 0;
 
   return (
@@ -74,6 +77,13 @@ export function Topbar({ onOpenMenu }: TopbarProps) {
         <button type="button" onClick={onOpenMenu} aria-label="Open menu" style={iconButtonStyle}>
           <Icon name="menu" size={20} />
         </button>
+      )}
+
+      {backHref && (
+        // In-app back: always the parent list, so it works even when the page was opened directly.
+        <Link href={backHref} aria-label="Back to employees" title="Back to employees" style={iconButtonStyle}>
+          <Icon name="arrow-left" size={20} />
+        </Link>
       )}
 
       <div style={{ flex: 1, minWidth: 120, display: 'flex', flexDirection: 'column', gap: 2 }}>

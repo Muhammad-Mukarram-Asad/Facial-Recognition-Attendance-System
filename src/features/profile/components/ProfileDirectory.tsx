@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 
 import { useEmployees } from "@/features/employees/hooks/useEmployees";
@@ -14,6 +14,8 @@ import {
   Icon,
   SkeletonRows,
 } from "@/shared/ui";
+
+import { RowNavIndicator } from "./RowNavIndicator";
 
 // Change this to request more/fewer rows per page from the real backend.
 const PAGE_SIZE = 30;
@@ -40,7 +42,6 @@ function getPageWindow(current: number, total: number, size = MAX_PAGE_BUTTONS):
  * edit screen.
  */
 export function ProfileDirectory() {
-  const router = useRouter();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const debounced = useDebouncedValue(search, 250);
@@ -124,10 +125,9 @@ export function ProfileDirectory() {
           }}
         >
           {data?.items.map((employee) => (
-            <button
+            <Link
               key={employee.id}
-              type="button"
-              onClick={() => router.push(ROUTES.profileFor(employee.id))}
+              href={ROUTES.profileFor(employee.id)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -138,6 +138,8 @@ export function ProfileDirectory() {
                 borderBottom: "1px solid var(--border-subtle)",
                 borderRadius: 12,
                 background: "transparent",
+                color: "inherit",
+                textDecoration: "none",
                 textAlign: "left",
                 cursor: "pointer",
               }}
@@ -171,8 +173,8 @@ export function ProfileDirectory() {
                   {employee.employeeId} · {employee.department}
                 </span>
               </span>
-              <Icon name="chevron-right" size={18} />
-            </button>
+              <RowNavIndicator />
+            </Link>
           ))}
         </div>
       )}

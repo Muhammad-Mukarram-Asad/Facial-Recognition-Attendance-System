@@ -75,14 +75,17 @@ export type RiskEntry = z.infer<typeof riskEntrySchema>;
 export type StreamEntry = z.infer<typeof streamEntrySchema>;
 
 /**
- * A single frame from GET /api/v1/attendance/stream (SSE), confirmed
- * against the API doc's example event. No employee name is included —
- * just the id — so the UI shows "Employee #<id>" until there's a lookup.
+ * One `data:` frame from GET /api/v1/attendance/stream (SSE) — the row the
+ * Kafka consumer just saved to `attendance_events`, per the backend API doc.
+ * Keepalives arrive as `event: keepalive` with no data and never reach here.
  */
 export interface AttendanceStreamEvent {
-  event_id: number;
+  id: number;
   employee_id: number;
+  employee_name: string;
+  /** ISO 8601 with offset, e.g. "2026-09-21T04:01:00+00:00". */
   timestamp: string;
+  /** "entry" | "exit" per the doc; typed loosely so a new type doesn't break parsing. */
   event_type: string;
   location: string;
 }

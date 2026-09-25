@@ -5,7 +5,7 @@ export const ROUTES = {
   dashboard: "/dashboard",
   attendance: "/attendance-records",
   employees: "/employees",
-  // reports: "/reports",
+  reports: "/reports",
   profile: "/employee-profile",
   profileFor: (employeeId: string) => `/employee-profile/${employeeId}`,
 
@@ -18,7 +18,7 @@ export const ROUTES = {
   //             by the backend team and handed to the client.
   //   leave   — leave management is hidden for this release.
   signUp: "/sign-up",
-  leave: "/leave-requests",
+  // leave: "/leave-requests",
   // ─────────────────────────────────────────────────────────────────────
 } as const;
 

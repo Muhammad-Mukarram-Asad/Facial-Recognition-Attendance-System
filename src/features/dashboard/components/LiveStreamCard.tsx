@@ -3,11 +3,20 @@
 import { Avatar, Card, CardHeader, EmptyState, SkeletonRows } from '@/shared/ui';
 import { formatClock } from '@/shared/lib/format';
 
-import { useAttendanceStream } from '../hooks/useAttendanceStream';
+import { useAttendanceStreamStatus } from '../hooks/useAttendanceStream';
+import { useLiveAttendanceEvents } from '../hooks/useLiveAttendanceEvents';
 
-/** Rolling feed of gate matches as they happen — GET /api/v1/attendance/stream (SSE). */
+/**
+ * Rolling last-24h feed of gate matches — GET /api/v1/attendance/stream (SSE).
+ * The connection lives in the console layout (AttendanceStreamConnection);
+ * this card only reads the shared query cache, so events that arrived while
+ * the user was on another page are already here.
+ */
 export function LiveStreamCard() {
-  const { data, isPending, isConnected } = useAttendanceStream();
+  const { isConnected } = useAttendanceStreamStatus();
+  const { events: data } = useLiveAttendanceEvents();
+  // Skeleton only before the first connection when there's nothing cached to show.
+  const isPending = !isConnected && data.length === 0;
 
   return (
     <Card style={{ flex: '1 1 330px', gap: 12 }}>
@@ -49,80 +58,82 @@ export function LiveStreamCard() {
       ) : data.length === 0 ? (
         <EmptyState message="No gate activity yet" icon="scan-face" />
       ) : (
-        data.map((event) => (
-          <div
-            key={event.event_id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              padding: '9px 0',
-              borderBottom: '1px solid var(--border-subtle)',
-            }}
-          >
-            <span style={{ position: 'relative', flex: 'none' }}>
-              <Avatar name={`Employee ${event.employee_id}`} size={36} />
-              <span
-                aria-hidden
-                style={{
-                  position: 'absolute',
-                  right: -3,
-                  bottom: -3,
-                  width: 12,
-                  height: 12,
-                  borderRadius: '50%',
-                  background: 'var(--surface-card)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--success)' }} />
+        // Uncapped (only age removes events), so scroll inside the card rather than growing it.
+        <div style={{ maxHeight: 480, overflowY: 'auto', margin: '0 -4px', padding: '0 4px' }}>
+          {data.map((event) => (
+            <div
+              key={event.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '9px 0',
+                borderBottom: '1px solid var(--border-subtle)',
+              }}
+            >
+              <span style={{ position: 'relative', flex: 'none' }}>
+                <Avatar name={event.employee_name || `Employee ${event.employee_id}`} size={36} />
+                <span
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    right: -3,
+                    bottom: -3,
+                    width: 12,
+                    height: 12,
+                    borderRadius: '50%',
+                    background: 'var(--surface-card)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--success)' }} />
+                </span>
               </span>
-            </span>
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: 'var(--text-strong)',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {/* No employee name in the event payload — just an id. */}
-                Employee #{event.employee_id}
-              </span>
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 11.5,
-                  color: 'var(--text-faint)',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {event.location}
-              </span>
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: 'var(--text-strong)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {event.employee_name || `Employee #${event.employee_id}`}
+                </span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 11.5,
+                    color: 'var(--text-faint)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {event.location}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flex: 'none' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, fontWeight: 500, color: 'var(--text-body)' }}>
+                  {formatClock(new Date(event.timestamp))}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: event.event_type === 'exit' ? 'var(--warning)' : 'var(--success)',
+                  }}
+                >
+                  {event.event_type.toUpperCase()}
+                </span>
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flex: 'none' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, fontWeight: 500, color: 'var(--text-body)' }}>
-                {formatClock(new Date(event.timestamp))}
-              </span>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: event.event_type === 'exit' ? 'var(--warning)' : 'var(--success)',
-                }}
-              >
-                {event.event_type.toUpperCase()}
-              </span>
-            </div>
-          </div>
-        ))
+          ))}
+        </div>
       )}
     </Card>
   );
