@@ -20,7 +20,8 @@ import {
  * accounts are provisioned by the backend team, see SignInForm's copy).
  */
 const AUTH_API_URL =
-  process.env.NEXT_PUBLIC_AUTH_API_URL ?? 'http://localhost:8000/api/v1';
+  // process.env.NEXT_PUBLIC_AUTH_API_URL ?? 'http://localhost:8000/api/v1';
+  process.env.NEXT_PUBLIC_AUTH_API_URL ?? 'https://facial-recognition.jbs-ai.com/api/v1';
 
 export const authApi = {
   /** POST /api/v1/auth/signin — real backend. */

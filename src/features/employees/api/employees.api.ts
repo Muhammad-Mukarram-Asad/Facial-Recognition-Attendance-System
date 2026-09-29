@@ -18,7 +18,8 @@ import {
  */
 const EMPLOYEES_API_URL =
   process.env.NEXT_PUBLIC_EMPLOYEES_API_URL ??
-  "http://localhost:8000/api/v1/employees";
+  // "http://localhost:8000/api/v1/employees";
+  "https://facial-recognition.jbs-ai.com/api/v1/employees";
 
 interface EmployeesListResponse {
   success: boolean;

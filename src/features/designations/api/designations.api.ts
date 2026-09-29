@@ -6,7 +6,8 @@ import type { Designation } from '../types';
  * EMPLOYEES_API_URL/DEPARTMENTS_API_URL. */
 const DESIGNATIONS_API_URL =
   process.env.NEXT_PUBLIC_DESIGNATIONS_API_URL ??
-  'http://localhost:8000/api/v1/designations';
+  // 'http://localhost:8000/api/v1/designations';
+  'https://facial-recognition.jbs-ai.com/api/v1/designations';
 
 interface DesignationsResponse {
   success: boolean;

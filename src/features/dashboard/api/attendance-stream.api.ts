@@ -8,7 +8,8 @@ import type { AttendanceStreamEvent } from '../types';
  */
 export const ATTENDANCE_STREAM_URL =
   process.env.NEXT_PUBLIC_ATTENDANCE_STREAM_URL ??
-  'http://localhost:8000/api/v1/attendance/stream';
+  // 'http://localhost:8000/api/v1/attendance/stream';
+  'https://facial-recognition.jbs-ai.com/api/v1/attendance/stream';
 
 /**
  * Each `data:` frame is one saved attendance event as a single JSON object.
