@@ -44,7 +44,7 @@ export function AuthBrandPanel() {
         > */}
         {/* <Icon name="scan-face" size={19} /> */}
         <Image
-          src={"/JBS OmniVision logo.svg"}
+          src={"/logo.svg"}
           alt="JBS-logo"
           width={80}
           height={80}
