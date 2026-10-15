@@ -1,255 +1,87 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import {
-  PageToolbar,
-  ToolbarSpacer,
-} from "@/features/shell/components/PageToolbar";
-import { ROUTES } from "@/shared/config/routes";
-import {
-  Button,
-  Card,
-  Counter,
-  SegmentedControl,
-  Skeleton,
-  StatCard,
-} from "@/shared/ui";
+import { PageToolbar, ToolbarSpacer } from "@/features/shell/components/PageToolbar";
+import { useIsDesktop } from "@/shared/hooks/useMediaQuery";
+import { Button, Card, Counter, Skeleton, StatCard } from "@/shared/ui";
 
-import { useDashboardOverview } from "../hooks/useDashboard";
-import { RANGE_OPTIONS, type DashboardRange } from "../types";
+import { useAttendanceAnalytics } from "../hooks/useDashboard";
+import { startOfToday, toPeriodBounds } from "../types";
 import { DateRangeFilter } from "./DateRangeFilter";
-import { HourlyCheckInsChart } from "./HourlyCheckInsChart";
 import { LiveStreamCard } from "./LiveStreamCard";
-// HIDDEN — leave management.
-// import { PendingLeaveCard } from './PendingLeaveCard';
 import { PresenceCard } from "./PresenceCard";
-import { PunctualityChart } from "./PunctualityChart";
-// HIDDEN — attendance risk list.
-// import { RiskListCard } from './RiskListCard';
 
-// Staggered so the workforce row visibly follows the presence card's own animation.
-const WORKFORCE_DELAY_MS = 550;
-const DEVICE_DELAY_MS = 750;
-const SECURITY_DELAY_MS = 910;
+const CARD_DELAY_MS = 550;
 
 export function DashboardView() {
-  const router = useRouter();
-  const [range, setRange] = useState<DashboardRange>("24h");
-  const { data, isPending, isError, refetch } = useDashboardOverview(range);
+  const isDesktop = useIsDesktop();
+  const [date, setDate] = useState(startOfToday);
+  const period = toPeriodBounds(date);
+  const analytics = useAttendanceAnalytics(period.start_at, period.end_at);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <PageToolbar>
-        <div style={{ maxWidth: "100%", overflowX: "auto" }}>
-          <SegmentedControl
-            size="sm"
-            ariaLabel="Date range"
-            options={[...RANGE_OPTIONS]}
-            value={range}
-            onChange={(value) => setRange(value as DashboardRange)}
-          />
-        </div>
-        <DateRangeFilter />
+        <DateRangeFilter date={date} onChange={setDate} />
         <ToolbarSpacer />
-        {/* HIDDEN — filters panel not built yet.
-        <Button variant="secondary" size="sm" icon="sliders-horizontal">
-          Filters
-        </Button>
-        */}
-        {/* <Button
-          size="sm"
-          icon="download"
-          onClick={() => router.push(ROUTES.reports)}
-        >
-          Export
-        </Button> */}
       </PageToolbar>
 
-      {isError ? (
+      {analytics.isError ? (
         <Card padding="28px" style={{ alignItems: "center", gap: 12 }}>
-          <span
-            style={{
-              fontSize: 14.5,
-              fontWeight: 600,
-              color: "var(--text-body)",
-            }}
-          >
-            Could not load the dashboard.
+          <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--text-body)" }}>
+            Could not load attendance analytics.
           </span>
-          <Button size="sm" icon="refresh-cw" onClick={() => refetch()}>
+          <Button size="sm" icon="refresh-cw" onClick={() => analytics.refetch()}>
             Retry
           </Button>
         </Card>
-      ) : isPending || !data ? (
+      ) : analytics.isPending || !analytics.data ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <Skeleton height={172} radius={14} />
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(5, minmax(0,1fr))",
+              gridTemplateColumns: isDesktop ? "repeat(3, minmax(0, 1fr))" : "repeat(2, minmax(0, 1fr))",
               gap: 12,
             }}
           >
             <Skeleton height={110} radius={14} />
             <Skeleton height={110} radius={14} />
             <Skeleton height={110} radius={14} />
-            <Skeleton height={110} radius={14} />
-            <Skeleton height={110} radius={14} />
           </div>
-          <Skeleton height={320} radius={14} />
         </div>
       ) : (
         <>
-          <PresenceCard presence={data.presence} />
-
+          <PresenceCard analytics={analytics.data} />
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(5, minmax(0,1fr))",
+              gridTemplateColumns: isDesktop ? "repeat(3, minmax(0, 1fr))" : "1fr",
               gap: 12,
             }}
           >
             <StatCard
               label="Total employees"
               padding="16px 18px"
-              value={
-                <Counter
-                  value={data.workforce.total}
-                  delayMs={WORKFORCE_DELAY_MS}
-                />
-              }
-              subs={[
-                {
-                  label: "Active",
-                  value: (
-                    <Counter
-                      value={data.workforce.active}
-                      delayMs={WORKFORCE_DELAY_MS + 80}
-                    />
-                  ),
-                },
-                {
-                  label: "Absent",
-                  value: (
-                    <Counter
-                      value={data.absence.total}
-                      delayMs={WORKFORCE_DELAY_MS + 160}
-                    />
-                  ),
-                  tone: "high",
-                },
-              ]}
+              value={<Counter value={analytics.data.total_employees} delayMs={CARD_DELAY_MS} />}
             />
             <StatCard
               label="Enrolled faces"
               padding="16px 18px"
-              value={
-                <Counter
-                  value={data.device.enrolledFaces}
-                  delayMs={DEVICE_DELAY_MS}
-                />
-              }
-              subs={[
-                {
-                  label: "Coverage",
-                  value: `${Math.round((data.device.enrolledFaces / data.workforce.total) * 100)}%`,
-                },
-              ]}
-            />
-            <StatCard
-              label="Gate cameras"
-              padding="16px 18px"
-              value={
-                <Counter
-                  value={data.device.gateCameras}
-                  delayMs={DEVICE_DELAY_MS + 80}
-                />
-              }
-              subs={[
-                {
-                  label: "Match accuracy",
-                  value: `${data.device.matchAccuracy}%`,
-                  tone: "success",
-                },
-              ]}
-            />
-            <StatCard
-              label="Strangers detected"
-              padding="16px 18px"
-              valueTone="warning"
-              value={
-                <Counter
-                  value={data.security.strangers}
-                  delayMs={SECURITY_DELAY_MS}
-                />
-              }
-              subs={data.security.strangersByCamera.map((entry, index) => ({
-                label: `${entry.camera}:`,
-                value: (
-                  <Counter
-                    value={entry.count}
-                    delayMs={SECURITY_DELAY_MS + 80 + index * 60}
-                  />
-                ),
-                tone: "warning" as const,
-              }))}
+              value={<Counter value={analytics.data.enrolled_faces} delayMs={CARD_DELAY_MS + 80} />}
             />
             <StatCard
               label="Blacklisted attempts"
               padding="16px 18px"
               valueTone="high"
-              value={
-                <Counter
-                  value={data.security.blacklisted}
-                  delayMs={SECURITY_DELAY_MS + 80}
-                />
-              }
-              subs={data.security.blacklistedByCamera.map((entry, index) => ({
-                label: `${entry.camera}:`,
-                value: (
-                  <Counter
-                    value={entry.count}
-                    delayMs={SECURITY_DELAY_MS + 160 + index * 60}
-                  />
-                ),
-                tone: "high" as const,
-              }))}
+              value={<Counter value={analytics.data.blacklisted_attempts} delayMs={CARD_DELAY_MS + 160} />}
             />
-            {/* HIDDEN — leave management.
-            <PendingLeaveCard pendingLeave={data.pendingLeave} />
-            */}
-          </div>
-
-          {/* Stream Attendance Card comes up before the charts */}
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 16,
-              alignItems: "flex-start",
-            }}
-          >
-            {/* HIDDEN — attendance risk list.
-            <RiskListCard />
-            */}
-            <LiveStreamCard />
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 16,
-              alignItems: "stretch",
-            }}
-          >
-            <HourlyCheckInsChart range={range} />
-            <PunctualityChart range={range} />
           </div>
         </>
       )}
+
+      <LiveStreamCard />
     </div>
   );
 }

@@ -9,7 +9,6 @@ reviewing attendance history, and exporting reports.
 - 📊 **Dashboard** — live presence, punctuality trends, and hourly check-in activity at a glance.
 - 🧾 **Attendance records** — searchable, filterable daily logs with bulk actions.
 - 👥 **Employee management** — roster, profiles, and face enrollment.
-- 📈 **Reports** — built and saved aggregate reports, exportable on demand.
 - 🌗 **Light / dark themes** — instant, flash-free theme switching.
 - 📱 **Responsive** — real component swaps (not just CSS) below 900px.
 
@@ -43,8 +42,8 @@ Run the dev server:
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — sign in with any
-well-formed email and a password of 4+ characters.
+Open [http://localhost:3000](http://localhost:3000) and sign in with an
+account issued by the FaceTrack backend.
 
 ## 📜 Scripts
 
@@ -70,16 +69,14 @@ src/
 │   │   ├── dashboard/
 │   │   ├── attendance-records/
 │   │   ├── employees/
-│   │   ├── reports/
 │   │   └── employee-profile/[employeeId]/
-│   ├── api/                    API route handlers
 │   ├── globals.css             design tokens
 │   └── layout.tsx
 │
 ├── features/                   one folder per domain
 │   ├── auth/         attendance/   dashboard/
-│   ├── employees/    leave/        notifications/
-│   ├── profile/      reports/      shell/
+│   ├── employees/    departments/  designations/
+│   ├── profile/      shell/
 │   │
 │   └── <feature>/
 │       ├── types.ts            zod schemas + inferred types (the contract)
@@ -94,10 +91,6 @@ src/
 │   ├── hooks/  lib/  theme/    utilities and theme store
 │   ├── types/                  shared primitives
 │   └── ui/                     design-system kit
-│
-└── server/                     API data source
-    ├── data/                   seed data
-    └── lib/                    store, response + pagination helpers
 ```
 
 **Rules that keep it honest**

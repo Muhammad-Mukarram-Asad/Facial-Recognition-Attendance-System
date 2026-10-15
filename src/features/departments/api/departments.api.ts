@@ -2,14 +2,7 @@ import { apiClient } from '@/shared/api/client';
 
 import type { Department } from '../types';
 
-/**
- * Same "explicit absolute URL, bypass the mock baseURL" pattern as
- * EMPLOYEES_API_URL/AUTH_API_URL.
- */
-const DEPARTMENTS_API_URL =
-  process.env.NEXT_PUBLIC_DEPARTMENTS_API_URL ??
-  // 'http://localhost:8000/api/v1/departments';
-  'https://facial-recognition.jbs-ai.com/api/v1/departments';
+const DEPARTMENTS_API_URL = "/departments";
 
 interface DepartmentsResponse {
   success: boolean;

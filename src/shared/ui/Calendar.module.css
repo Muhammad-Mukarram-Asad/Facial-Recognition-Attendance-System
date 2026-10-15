@@ -116,11 +116,18 @@
 .disabled .dayButton {
   color: var(--text-faint);
   cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.disabled .dayButton:hover {
+  background: transparent;
 }
 
 .selected .dayButton {
-  background: var(--interactive-primary);
-  color: var(--text-on-inverse);
+  background: transparent;
+  color: var(--interactive-primary);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1.5px var(--interactive-primary);
 }
 
 .range_start .dayButton,

@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 
 import { toApiError } from "@/shared/api/client";
-import { ROUTES } from "@/shared/config/routes";
-import { Button, Checkbox, Icon, TextField } from "@/shared/ui";
+import { Button, Checkbox, TextField } from "@/shared/ui";
 
 import { useSignIn } from "../hooks/useSession";
 import { signInSchema } from "../types";
@@ -122,55 +120,11 @@ export function SignInForm() {
         >
           Keep me signed in
         </Checkbox>
-        <Link
-          href={ROUTES.forgotPassword}
-          style={{ fontSize: 13, fontWeight: 600 }}
-        >
-          Forgot password?
-        </Link>
       </div>
 
       <Button type="submit" size="lg" fullWidth loading={signIn.isPending}>
         Sign in to console
       </Button>
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          color: "var(--text-faint)",
-          fontSize: 11,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-        }}
-      >
-        {/* <span style={{ height: 1, flex: 1, background: 'var(--border-default)' }} />
-        or
-        <span style={{ height: 1, flex: 1, background: 'var(--border-default)' }} /> */}
-      </div>
-
-      {/* <Button
-        type="button"
-        variant="secondary"
-        size="lg"
-        fullWidth
-        onClick={() =>
-          signIn.mutate({ email: 'mukarram.asad@ltm.com', password: 'kiosk-face-match', rememberMe: true })
-        }
-      >
-        <Icon name="scan-face" size={18} />
-        Use face sign-in at kiosk
-      </Button> */}
-
-      {/* HIDDEN — self-service sign-up. Accounts are provisioned by the backend team.
-      <p style={{ margin: 0, fontSize: 13.5, color: 'var(--text-muted)' }}>
-        New here?{' '}
-        <Link href={ROUTES.signUp} style={{ fontWeight: 600 }}>
-          Create an admin account
-        </Link>
-      </p>
-      */}
 
       <p
         style={{

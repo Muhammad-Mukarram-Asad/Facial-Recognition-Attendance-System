@@ -1,15 +1,12 @@
+import { API_BASE_URL } from '@/shared/api/client';
+
 import type { AttendanceStreamEvent } from '../types';
 
 /**
- * Real backend — same "explicit absolute URL, bypass the mock baseURL"
- * pattern used elsewhere (employees, auth, departments, designations).
- * Consumed with EventSourcePolyfill (see useAttendanceStream), since the
- * native EventSource can't send the Authorization header.
+ * Live gate feed. Consumed with EventSourcePolyfill (see useAttendanceStream),
+ * since the native EventSource can't send the Authorization header.
  */
-export const ATTENDANCE_STREAM_URL =
-  process.env.NEXT_PUBLIC_ATTENDANCE_STREAM_URL ??
-  // 'http://localhost:8000/api/v1/attendance/stream';
-  'https://facial-recognition.jbs-ai.com/api/v1/attendance/stream';
+export const ATTENDANCE_STREAM_URL = `${API_BASE_URL}/attendance/stream`;
 
 /**
  * Each `data:` frame is one saved attendance event as a single JSON object.

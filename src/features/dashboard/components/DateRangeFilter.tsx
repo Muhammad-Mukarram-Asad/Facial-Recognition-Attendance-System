@@ -1,27 +1,23 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 
-import { Button, Calendar, Popover, PopoverContent, PopoverTrigger } from '@/shared/ui';
-import { formatDate } from '@/shared/lib/format';
+import { formatDate } from "@/shared/lib/format";
+import { Button, Calendar, Popover, PopoverContent, PopoverTrigger } from "@/shared/ui";
 
-import type { DateRange } from 'react-day-picker';
+import { isSameLocalDay } from "../types";
 
-/** Calendar icon button that opens a two-month range picker. Range mode: the first
- *  click sets the start date, the second click sets the end date — clicking the same
- *  day twice selects that single day as both start and end. */
-export function DateRangeFilter() {
-  const [range, setRange] = useState<DateRange | undefined>(undefined);
+/** Day picker for the dashboard. Future days are disabled; today starts selected. */
+export function DateRangeFilter({
+  date,
+  onChange,
+}: {
+  date: Date;
+  onChange: (date: Date) => void;
+}) {
   const [open, setOpen] = useState(false);
-
-  const label =
-    range?.from && range.to
-      ? range.from.getTime() === range.to.getTime()
-        ? formatDate(range.from)
-        : `${formatDate(range.from)} – ${formatDate(range.to)}`
-      : range?.from
-        ? formatDate(range.from)
-        : 'Select date range';
+  const label = formatDate(date);
+  const todaySelected = isSameLocalDay(date, new Date());
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -30,18 +26,29 @@ export function DateRangeFilter() {
           variant="secondary"
           size="sm"
           icon="calendar"
-          aria-label="Select date range"
+          aria-label={`Attendance period ${label}`}
           title={label}
-          style={{ width: 34, padding: 0, flex: 'none' }}
-        />
+          style={
+            todaySelected
+              ? { borderColor: "var(--interactive-primary)", boxShadow: "0 0 0 1px var(--interactive-primary)" }
+              : undefined
+          }
+        >
+          {label}
+        </Button>
       </PopoverTrigger>
-      <PopoverContent align="center" sideOffset={6}>
+      <PopoverContent align="start" sideOffset={6}>
         <Calendar
-          mode="range"
+          mode="single"
           numberOfMonths={2}
-          selected={range}
-          onSelect={setRange}
-          defaultMonth={range?.from}
+          selected={date}
+          disabled={{ after: new Date() }}
+          onSelect={(next) => {
+            if (!next) return;
+            onChange(next);
+            setOpen(false);
+          }}
+          defaultMonth={date}
         />
       </PopoverContent>
     </Popover>

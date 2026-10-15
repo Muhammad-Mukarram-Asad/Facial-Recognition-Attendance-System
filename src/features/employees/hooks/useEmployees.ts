@@ -41,7 +41,6 @@ export function useCreateEmployee() {
     }) => employeesApi.create(input, photo),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.employees.all() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all() });
     },
   });
 }
@@ -58,7 +57,6 @@ export function useUpdateEmployee() {
     }) => employeesApi.update(employeeId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.employees.all() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all() });
     },
   });
 }
@@ -69,7 +67,6 @@ export function useDeleteEmployee() {
     mutationFn: employeesApi.remove,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.employees.all() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all() });
     },
   });
 }

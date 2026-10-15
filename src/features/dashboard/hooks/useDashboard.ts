@@ -1,33 +1,15 @@
-'use client';
+"use client";
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
 
-import { queryKeys } from '@/shared/api/query-keys';
+import { queryKeys } from "@/shared/api/query-keys";
 
-import { dashboardApi } from '../api/dashboard.api';
-import type { DashboardRange } from '../types';
+import { dashboardApi } from "../api/dashboard.api";
 
-export function useDashboardOverview(range: DashboardRange) {
+export function useAttendanceAnalytics(startAt: string, endAt: string) {
   return useQuery({
-    queryKey: queryKeys.dashboard.overview(range),
-    queryFn: () => dashboardApi.overview(range),
-    // Ranges are cheap to switch between; keep the previous chart on screen.
+    queryKey: queryKeys.dashboard.analytics(startAt, endAt),
+    queryFn: () => dashboardApi.analytics(startAt, endAt),
     placeholderData: (previous) => previous,
-  });
-}
-
-export function useRiskList() {
-  return useQuery({
-    queryKey: queryKeys.dashboard.risk(),
-    queryFn: dashboardApi.risk,
-  });
-}
-
-export function useClockInStream() {
-  return useQuery({
-    queryKey: queryKeys.dashboard.stream(),
-    queryFn: dashboardApi.stream,
-    // The gate stream is the one genuinely live surface on this page.
-    refetchInterval: 15_000,
   });
 }

@@ -34,9 +34,8 @@ import {
 /**
  * Narrows a raw employee record down to the editable form shape.
  *
- * Employment + attendance rules aren't wired to a real backend yet, so
- * those fields stay disabled and blank (placeholder-only) even when
- * editing a record that has mock values for them.
+ * Employment + attendance rules aren't returned as editable fields yet, so
+ * those inputs stay disabled and blank.
  */
 function toInput(employee: Employee): EmployeeInput {
   return {

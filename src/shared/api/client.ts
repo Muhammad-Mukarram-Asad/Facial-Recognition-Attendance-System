@@ -4,15 +4,20 @@ import type { ZodType } from "zod";
 import { getAuthToken } from "@/shared/lib/auth-token";
 import type { ApiError } from "@/shared/types";
 
+/** Live host used when no env file sets NEXT_PUBLIC_API_BASE_URL. */
+const LIVE_API_BASE_URL = "https://facial-recognition.jbs-ai.com/api/v1";
+
+/** `.env.local` in development, `.env.production` in production builds. */
+export const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? LIVE_API_BASE_URL
+).replace(/\/$/, "");
+
 /**
- * Single axios instance for the whole app.
- *
- * Defaults to the in-app route handlers under /api. Point
- * NEXT_PUBLIC_API_BASE_URL at the real FaceTrack backend to swap
- * the mock for production without touching feature code.
+ * Single axios instance for the FaceTrack API.
+ * Relative paths resolve against API_BASE_URL.
  */
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api",
+  baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
   timeout: 15_000,
 });

@@ -1,20 +1,11 @@
-import { getValidated } from '@/shared/api/client';
+import { getValidated } from "@/shared/api/client";
 
-import {
-  overviewSchema,
-  riskListSchema,
-  streamSchema,
-  type DashboardOverview,
-  type DashboardRange,
-  type RiskEntry,
-  type StreamEntry,
-} from '../types';
+import { attendanceAnalyticsSchema, type AttendanceAnalytics } from "../types";
 
 export const dashboardApi = {
-  overview: (range: DashboardRange): Promise<DashboardOverview> =>
-    getValidated('/dashboard/overview', overviewSchema, { params: { range } }),
-
-  risk: (): Promise<RiskEntry[]> => getValidated('/dashboard/risk', riskListSchema),
-
-  stream: (): Promise<StreamEntry[]> => getValidated('/dashboard/stream', streamSchema),
+  /** GET /api/v1/attendance/attendance-analytics — inclusive period. */
+  analytics: (startAt: string, endAt: string): Promise<AttendanceAnalytics> =>
+    getValidated("/attendance/attendance-analytics", attendanceAnalyticsSchema, {
+      params: { start_at: startAt, end_at: endAt },
+    }).then((response) => response.data),
 };

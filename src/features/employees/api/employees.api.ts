@@ -9,17 +9,7 @@ import {
   type RealEmployeeRecord,
 } from "../types";
 
-/**
- * The real backend's employee endpoints. Every call here is pinned to an
- * explicit, absolute URL so it hits the real FaceTrack backend directly —
- * bypassing apiClient's default baseURL (the in-app mock under /api) —
- * without needing NEXT_PUBLIC_API_BASE_URL to switch every other mocked
- * endpoint over with it.
- */
-const EMPLOYEES_API_URL =
-  process.env.NEXT_PUBLIC_EMPLOYEES_API_URL ??
-  // "http://localhost:8000/api/v1/employees";
-  "https://facial-recognition.jbs-ai.com/api/v1/employees";
+const EMPLOYEES_API_URL = "/employees";
 
 interface EmployeesListResponse {
   success: boolean;

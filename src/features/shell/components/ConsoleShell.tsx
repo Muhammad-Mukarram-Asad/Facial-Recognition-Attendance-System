@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 
-// HIDDEN — notification system. Restore with the bell in Topbar.
-// import { NotificationPanel } from '@/features/notifications/components/NotificationPanel';
 import { useIsDesktop } from '@/shared/hooks/useMediaQuery';
 import { Icon } from '@/shared/ui';
 
@@ -21,8 +19,6 @@ import { Topbar } from './Topbar';
 export function ConsoleShell({ children }: { children: ReactNode }) {
   const isDesktop = useIsDesktop();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  // HIDDEN — notification system.
-  // const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   // Derived, not stored: the drawer only exists on mobile, so widening the
   // viewport dismisses it without a reset effect.
@@ -32,7 +28,6 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       setDrawerOpen(false);
-      // setNotificationsOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -136,10 +131,6 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
         <Topbar onOpenMenu={() => setDrawerOpen(true)} />
         <main style={{ paddingBottom: 28, animation: 'ftFade 240ms var(--ease-out) both' }}>{children}</main>
       </div>
-
-      {/* HIDDEN — notification system.
-      {notificationsOpen && <NotificationPanel onClose={() => setNotificationsOpen(false)} />}
-      */}
     </div>
   );
 }

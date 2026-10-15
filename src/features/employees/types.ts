@@ -125,8 +125,8 @@ export interface RealEmployeeRecord {
 }
 
 /**
- * Adapts a real backend employee record onto the shape the rest of this
- * app's UI already renders (Employee, from the mock schema below). There's
+ * Adapts a backend employee record onto the shape the rest of this
+ * app's UI renders. There's
  * no department/shift NAME lookup wired up for shift yet, so that still
  * shows as a "Shift #<id>" placeholder rather than a real name; department
  * and designation now resolve to real names via their Redux slices where

@@ -3,7 +3,7 @@ import { AttendanceStreamConnection } from '@/features/dashboard/components/Atte
 import { ConsoleShell } from '@/features/shell/components/ConsoleShell';
 
 /**
- * Every signed-in route shares the guard, sidebar, topbar and notifications,
+ * Every signed-in route shares the guard, sidebar, and topbar,
  * plus the one live attendance stream connection (so gate events are
  * captured on every page, not just the dashboard).
  */

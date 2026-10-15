@@ -64,6 +64,8 @@ export function ProfileDirectory() {
     limit: PAGE_SIZE,
   });
   const pageCount = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
+  const rangeStart = data && data.items.length > 0 ? (page - 1) * PAGE_SIZE + 1 : 0;
+  const rangeEnd = data && data.items.length > 0 ? rangeStart + data.items.length - 1 : 0;
 
   return (
     <Card padding={22} style={{ gap: 14 }}>
@@ -191,7 +193,8 @@ export function ProfileDirectory() {
           }}
         >
           <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-            Showing {data.items.length} of {data.total.toLocaleString()}
+            Showing {rangeStart.toLocaleString()}–{rangeEnd.toLocaleString()} of{" "}
+            {data.total.toLocaleString()}
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <Button

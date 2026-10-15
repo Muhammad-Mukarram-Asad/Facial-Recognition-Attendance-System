@@ -4,8 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { useSession } from '@/features/auth/hooks/useSession';
-// HIDDEN — notification system.
-// import { useNotifications } from '@/features/notifications/hooks/useNotifications';
 import { PAGE_META, ROUTES } from '@/shared/config/routes';
 import { useClock } from '@/shared/hooks/useClock';
 import { useIsDesktop } from '@/shared/hooks/useMediaQuery';
@@ -15,8 +13,6 @@ import { Icon } from '@/shared/ui';
 
 export interface TopbarProps {
   onOpenMenu: () => void;
-  // HIDDEN — notification system.
-  // onToggleNotifications: () => void;
 }
 
 function metaFor(pathname: string): { crumb: string; title: string; backHref?: string } {
@@ -49,11 +45,8 @@ export function Topbar({ onOpenMenu }: TopbarProps) {
   const isDesktop = useIsDesktop();
   const { theme, toggleTheme } = useTheme();
   const { data: session } = useSession();
-  // HIDDEN — notification system.
-  // const { data: notifications } = useNotifications();
 
   const { crumb, title, backHref } = metaFor(pathname);
-  // const unread = notifications?.unreadCount ?? 0;
 
   return (
     <header
@@ -146,41 +139,6 @@ export function Topbar({ onOpenMenu }: TopbarProps) {
       >
         <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18} />
       </button>
-
-      {/* HIDDEN — notification system.
-      <button
-        type="button"
-        onClick={onToggleNotifications}
-        aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}
-        style={{ ...iconButtonStyle, position: 'relative' }}
-      >
-        <Icon name="bell" size={18} />
-        {unread > 0 && (
-          <span
-            style={{
-              position: 'absolute',
-              top: 5,
-              right: 4,
-              minWidth: 17,
-              height: 17,
-              padding: '0 4px',
-              boxSizing: 'border-box',
-              borderRadius: 9,
-              background: 'var(--priority-high)',
-              color: '#fff',
-              fontSize: 10.5,
-              fontWeight: 700,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {unread}
-          </span>
-        )}
-      </button>
-      */}
-
 
       <span
         aria-hidden

@@ -21,9 +21,6 @@ const RECONNECT_INTERVAL_MS = 10_000;
  */
 const HEARTBEAT_TIMEOUT_MS = 120_000;
 
-/** Coalesce a burst of gate events into one stats refresh. */
-const STATS_REFRESH_DEBOUNCE_MS = 1_000;
-
 /** Whether the socket is currently open — cache-held so any component can read it. */
 const connectionQuery = queryOptions<boolean>({
   queryKey: queryKeys.liveAttendance.connection(),
@@ -41,7 +38,6 @@ export function useAttendanceStream({ enabled = true }: { enabled?: boolean } = 
   const queryClient = useQueryClient();
   const eventSourceRef = useRef<EventSourcePolyfill | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const statsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep the feed's cache entry observed for the whole session so it's never
   // garbage-collected while the user is on a page that doesn't show it.
@@ -55,16 +51,6 @@ export function useAttendanceStream({ enabled = true }: { enabled?: boolean } = 
     let destroyed = false;
     const setConnected = (connected: boolean) =>
       queryClient.setQueryData(connectionQuery.queryKey, connected);
-
-    const scheduleStatsRefresh = () => {
-      if (statsTimerRef.current) clearTimeout(statsTimerRef.current);
-      statsTimerRef.current = setTimeout(() => {
-        statsTimerRef.current = null;
-        // Only the figures derived from gate events — never the feed itself.
-        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.overviewAll() });
-        queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all() });
-      }, STATS_REFRESH_DEBOUNCE_MS);
-    };
 
     const connect = () => {
       if (destroyed) return;
@@ -101,9 +87,6 @@ export function useAttendanceStream({ enabled = true }: { enabled?: boolean } = 
           return [incoming, ...existing].filter((item) => isWithinLiveWindow(item, now));
         });
 
-        // The cache write above is the source of truth for the feed; refetching
-        // it here would race the stream and could drop what's accumulated.
-        scheduleStatsRefresh();
       };
 
       es.onerror = () => {
@@ -126,10 +109,6 @@ export function useAttendanceStream({ enabled = true }: { enabled?: boolean } = 
 
     return () => {
       destroyed = true;
-      if (statsTimerRef.current) {
-        clearTimeout(statsTimerRef.current);
-        statsTimerRef.current = null;
-      }
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = null;
