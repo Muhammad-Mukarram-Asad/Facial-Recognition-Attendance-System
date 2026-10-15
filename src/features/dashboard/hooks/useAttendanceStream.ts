@@ -8,7 +8,7 @@ import { queryKeys } from '@/shared/api/query-keys';
 import { getAuthToken } from '@/shared/lib/auth-token';
 
 import { ATTENDANCE_STREAM_URL, parseStreamEvent } from '../api/attendance-stream.api';
-import type { AttendanceStreamEvent } from '../types';
+import { streamEventKey, type AttendanceStreamEvent } from '../types';
 import { isWithinLiveWindow, liveAttendanceEventsQuery } from './useLiveAttendanceEvents';
 
 /** Wait this long before reconnecting after the stream drops or errors. */
@@ -80,9 +80,10 @@ export function useAttendanceStream({ enabled = true }: { enabled?: boolean } = 
 
         // Exact key (not setQueriesData): creates the entry if nothing has
         // read it yet, e.g. signed in straight onto the employees page.
-        // Dedupe by id and prepend; no cap — only age removes events.
+        // Frames have no id; dedupe on employee, time, type, and gate.
         queryClient.setQueryData(liveAttendanceEventsQuery.queryKey, (existing = []) => {
-          if (existing.some((item) => item.id === incoming.id)) return existing;
+          const incomingKey = streamEventKey(incoming);
+          if (existing.some((item) => streamEventKey(item) === incomingKey)) return existing;
           const now = Date.now();
           return [incoming, ...existing].filter((item) => isWithinLiveWindow(item, now));
         });

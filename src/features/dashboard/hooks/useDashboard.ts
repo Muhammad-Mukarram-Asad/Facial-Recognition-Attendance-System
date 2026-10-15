@@ -6,10 +6,10 @@ import { queryKeys } from "@/shared/api/query-keys";
 
 import { dashboardApi } from "../api/dashboard.api";
 
-export function useAttendanceAnalytics(startAt: string, endAt: string) {
+export function useAttendanceAnalytics(timestamp: string) {
   return useQuery({
-    queryKey: queryKeys.dashboard.analytics(startAt, endAt),
-    queryFn: () => dashboardApi.analytics(startAt, endAt),
+    queryKey: queryKeys.dashboard.analytics(timestamp),
+    queryFn: () => dashboardApi.analytics(timestamp),
     placeholderData: (previous) => previous,
   });
 }

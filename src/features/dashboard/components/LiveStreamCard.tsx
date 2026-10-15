@@ -1,10 +1,14 @@
 'use client';
 
+import { useState } from 'react';
+
 import { Avatar, Card, CardHeader, EmptyState, SkeletonRows } from '@/shared/ui';
 import { formatClock } from '@/shared/lib/format';
 
+import { streamPhotoUrl } from '../api/attendance-stream.api';
 import { useAttendanceStreamStatus } from '../hooks/useAttendanceStream';
 import { useLiveAttendanceEvents } from '../hooks/useLiveAttendanceEvents';
+import { streamEventKey, type AttendanceStreamEvent } from '../types';
 
 /**
  * Rolling last-24h feed of gate matches — GET /api/v1/attendance/stream (SSE).
@@ -62,7 +66,7 @@ export function LiveStreamCard() {
         <div style={{ maxHeight: 480, overflowY: 'auto', margin: '0 -4px', padding: '0 4px' }}>
           {data.map((event) => (
             <div
-              key={event.id}
+              key={streamEventKey(event)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -72,7 +76,7 @@ export function LiveStreamCard() {
               }}
             >
               <span style={{ position: 'relative', flex: 'none' }}>
-                <Avatar name={event.employee_name || `Employee ${event.employee_id}`} size={36} />
+                <GatePhoto event={event} />
                 <span
                   aria-hidden
                   style={{
@@ -136,5 +140,24 @@ export function LiveStreamCard() {
         </div>
       )}
     </Card>
+  );
+}
+
+function GatePhoto({ event }: { event: AttendanceStreamEvent }) {
+  const [failed, setFailed] = useState(false);
+  const src = streamPhotoUrl(event.photo_path);
+  const name = event.employee_name || `Employee ${event.employee_id}`;
+
+  if (!src || failed) return <Avatar name={name} size={36} />;
+
+  return (
+    <img
+      src={src}
+      alt=""
+      width={36}
+      height={36}
+      onError={() => setFailed(true)}
+      style={{ width: 36, height: 36, borderRadius: 11, objectFit: 'cover', display: 'block' }}
+    />
   );
 }

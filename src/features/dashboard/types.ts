@@ -13,48 +13,56 @@ export function startOfToday(): Date {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-/** Inclusive Asia/Karachi bounds for the selected calendar day. */
-export function toPeriodBounds(date: Date): { start_at: string; end_at: string } {
+/** Noon in Asia/Karachi so analytics-today uses the calendar day the user picked. */
+export function toDayTimestamp(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-  const stamp = `${year}-${month}-${day}`;
-  return {
-    start_at: `${stamp}T00:00:00+05:00`,
-    end_at: `${stamp}T23:59:59+05:00`,
-  };
+  return `${year}-${month}-${day}T12:00:00+05:00`;
 }
 
-/** GET /api/v1/attendance/attendance-analytics — inclusive period. */
+/** GET /api/v1/attendance/analytics-today — one calendar day. */
 export const attendanceAnalyticsSchema = z.object({
   success: z.boolean(),
   message: z.string(),
   data: z.object({
-    period_from: z.string(),
-    period_to: z.string(),
+    attendance_date: z.string(),
+    timestamp: z.string(),
+    present: z.number(),
+    absent: z.number(),
+    late: z.number(),
+    leave: z.number(),
+    blacklisted: z.number(),
+    total: z.number(),
     present_percent: z.number(),
     absent_percent: z.number(),
     late_percent: z.number(),
+    blacklisted_percent: z.number(),
     total_employees: z.number(),
     enrolled_faces: z.number(),
-    blacklisted_attempts: z.number(),
   }),
 });
 
 export type AttendanceAnalytics = z.infer<typeof attendanceAnalyticsSchema>["data"];
 
 /**
- * One `data:` frame from GET /api/v1/attendance/stream (SSE) — the row the
- * Kafka consumer just saved to `attendance_events`, per the backend API doc.
- * Keepalives arrive as `event: keepalive` with no data and never reach here.
+ * One `data:` frame from GET /api/v1/attendance/stream (SSE).
+ * Keepalives arrive as `event: keepalive` with no JSON body and never reach here.
  */
 export interface AttendanceStreamEvent {
-  id: number;
-  employee_id: number;
   employee_name: string;
-  /** ISO 8601 with offset, e.g. "2026-09-21T04:01:00+00:00". */
+  employee_id: number;
+  /** ISO 8601 gate detection time. */
   timestamp: string;
-  /** "entry" | "exit" per the doc; typed loosely so a new type doesn't break parsing. */
-  event_type: string;
+  /** Gate slug, e.g. "gate_01". */
   location: string;
+  /** Storage key for the gate capture. Null when the frame has no photo. */
+  photo_path: string | null;
+  /** "entry" | "exit". */
+  event_type: string;
+}
+
+/** Stable identity for a frame that has no event id. */
+export function streamEventKey(event: AttendanceStreamEvent): string {
+  return `${event.employee_id}|${event.timestamp}|${event.event_type}|${event.location}`;
 }

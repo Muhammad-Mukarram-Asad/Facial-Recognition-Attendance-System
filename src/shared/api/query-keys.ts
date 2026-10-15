@@ -6,7 +6,10 @@ import type { EmployeeQuery } from "@/features/employees/types";
  */
 export const queryKeys = {
   dashboard: {
-    analytics: (startAt: string, endAt: string) => ["dashboard", "analytics", startAt, endAt] as const,
+    analytics: (timestamp: string) => ["dashboard", "analytics", timestamp] as const,
+  },
+  attendance: {
+    register: (timestamp: string) => ["attendance", "register", timestamp] as const,
   },
   liveAttendance: {
     today: () => ["live-attendance", "today"] as const,

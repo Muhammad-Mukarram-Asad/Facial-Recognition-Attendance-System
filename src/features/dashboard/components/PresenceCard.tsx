@@ -7,16 +7,10 @@ const RADIUS = 52;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const LEGEND_DELAY_MS = 300;
 
-function formatPeriodDate(isoDate: string): string {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  if (!year || !month || !day) return isoDate;
+function labelFor(attendanceDate: string): string {
+  const [year, month, day] = attendanceDate.split("-").map(Number);
+  if (!year || !month || !day) return attendanceDate;
   return formatDate(new Date(year, month - 1, day));
-}
-
-function periodLabel(analytics: AttendanceAnalytics): string {
-  const from = formatPeriodDate(analytics.period_from);
-  const to = formatPeriodDate(analytics.period_to);
-  return from === to ? from : `${from} – ${to}`;
 }
 
 export function PresenceCard({ analytics }: { analytics: AttendanceAnalytics }) {
@@ -76,19 +70,41 @@ export function PresenceCard({ analytics }: { analytics: AttendanceAnalytics }) 
 
       <div style={{ flex: "1 1 200px", minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
         <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)" }}>
-          Presence · {periodLabel(analytics)}
+          Presence · {labelFor(analytics.attendance_date)}
+        </span>
+        <span
+          style={{
+            fontSize: 32,
+            fontWeight: 800,
+            letterSpacing: "-0.03em",
+            lineHeight: 1.1,
+            color: "var(--text-strong)",
+          }}
+        >
+          <Counter value={analytics.present} />
+          <span style={{ fontSize: 17, fontWeight: 600, color: "var(--text-faint)" }}>
+            {" "}
+            / <Counter value={analytics.total} />
+          </span>
         </span>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px" }}>
           {[
-            { color: "var(--priority-high)", suffix: "absent", value: analytics.absent_percent },
-            { color: "var(--warning)", suffix: "late", value: analytics.late_percent },
+            { color: "var(--priority-high)", suffix: "absent", count: analytics.absent, percent: analytics.absent_percent },
+            { color: "var(--warning)", suffix: "late", count: analytics.late, percent: analytics.late_percent },
+            { color: "var(--brand-blue-500)", suffix: "on leave", count: analytics.leave, percent: null },
+            { color: "var(--priority-high)", suffix: "blacklisted", count: analytics.blacklisted, percent: analytics.blacklisted_percent },
           ].map((item) => (
             <span
               key={item.suffix}
               style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--text-body)" }}
             >
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: item.color }} />
-              <Counter value={item.value} decimals={2} delayMs={LEGEND_DELAY_MS} />% {item.suffix}
+              <Counter value={item.count} delayMs={LEGEND_DELAY_MS} /> {item.suffix}
+              {item.percent != null && (
+                <span style={{ color: "var(--text-faint)" }}>
+                  (<Counter value={item.percent} decimals={2} delayMs={LEGEND_DELAY_MS} />%)
+                </span>
+              )}
             </span>
           ))}
         </div>
