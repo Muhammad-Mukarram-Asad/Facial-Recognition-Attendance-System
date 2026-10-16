@@ -46,21 +46,34 @@ export const attendanceAnalyticsSchema = z.object({
 export type AttendanceAnalytics = z.infer<typeof attendanceAnalyticsSchema>["data"];
 
 /**
- * One `data:` frame from GET /api/v1/attendance/stream (SSE).
- * Keepalives arrive as `event: keepalive` with no JSON body and never reach here.
+ * One gate event. Same six fields on GET /api/v1/attendance/events and on
+ * each `data:` frame from GET /api/v1/attendance/stream.
  */
-export interface AttendanceStreamEvent {
-  employee_name: string;
-  employee_id: number;
-  /** ISO 8601 gate detection time. */
-  timestamp: string;
-  /** Gate slug, e.g. "gate_01". */
-  location: string;
-  /** Storage key for the gate capture. Null when the frame has no photo. */
-  photo_path: string | null;
-  /** "entry" | "exit". */
-  event_type: string;
-}
+export const attendanceStreamEventSchema = z.object({
+  employee_name: z.string().optional().default(''),
+  employee_id: z.number(),
+  timestamp: z.string(),
+  location: z.string().optional().default(''),
+  photo_path: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => (value && value.length > 0 ? value : null)),
+  event_type: z.string().optional().default(''),
+});
+
+/** GET /api/v1/attendance/events — newest first, last 24 hours. */
+export const attendanceEventsResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  data: z.object({
+    window_hours: z.number(),
+    total: z.number(),
+    events: z.array(attendanceStreamEventSchema),
+  }),
+});
+
+export type AttendanceStreamEvent = z.infer<typeof attendanceStreamEventSchema>;
 
 /** Stable identity for a frame that has no event id. */
 export function streamEventKey(event: AttendanceStreamEvent): string {

@@ -1,6 +1,10 @@
-import { API_BASE_URL } from '@/shared/api/client';
+import { getValidated, API_BASE_URL } from '@/shared/api/client';
 
-import type { AttendanceStreamEvent } from '../types';
+import {
+  attendanceEventsResponseSchema,
+  attendanceStreamEventSchema,
+  type AttendanceStreamEvent,
+} from '../types';
 
 /**
  * Live gate feed. Consumed with EventSourcePolyfill (see useAttendanceStream),
@@ -17,21 +21,19 @@ export function streamPhotoUrl(photoPath: string | null): string | null {
   return `${SERVER_ASSETS_URL}/${photoPath.replace(/^\//, '')}`;
 }
 
+/** GET /api/v1/attendance/events — newest first, rolling last 24 hours. */
+export function fetchAttendanceEvents(): Promise<AttendanceStreamEvent[]> {
+  return getValidated('/attendance/events', attendanceEventsResponseSchema).then(
+    (response) => response.data.events,
+  );
+}
+
 /**
  * Each `data:` frame is one JSON object with the six documented fields.
  * Keepalive frames have no body and never reach here. A frame missing
  * employee_id or timestamp is dropped.
  */
 export function parseStreamEvent(payload: unknown): AttendanceStreamEvent | null {
-  if (!payload || typeof payload !== 'object') return null;
-  const event = payload as Partial<AttendanceStreamEvent>;
-  if (typeof event.employee_id !== 'number' || typeof event.timestamp !== 'string') return null;
-  return {
-    employee_name: typeof event.employee_name === 'string' ? event.employee_name : '',
-    employee_id: event.employee_id,
-    timestamp: event.timestamp,
-    location: typeof event.location === 'string' ? event.location : '',
-    photo_path: typeof event.photo_path === 'string' && event.photo_path.length > 0 ? event.photo_path : null,
-    event_type: typeof event.event_type === 'string' ? event.event_type : '',
-  };
+  const parsed = attendanceStreamEventSchema.safeParse(payload);
+  return parsed.success ? parsed.data : null;
 }

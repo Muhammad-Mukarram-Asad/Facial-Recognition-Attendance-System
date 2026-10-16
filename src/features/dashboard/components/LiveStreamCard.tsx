@@ -11,16 +11,13 @@ import { useLiveAttendanceEvents } from '../hooks/useLiveAttendanceEvents';
 import { streamEventKey, type AttendanceStreamEvent } from '../types';
 
 /**
- * Rolling last-24h feed of gate matches — GET /api/v1/attendance/stream (SSE).
- * The connection lives in the console layout (AttendanceStreamConnection);
- * this card only reads the shared query cache, so events that arrived while
- * the user was on another page are already here.
+ * Rolling last-24h feed. GET /api/v1/attendance/events fills the window on
+ * load; GET /api/v1/attendance/stream appends matches that arrive after that.
+ * The connection lives in the console layout, so this card only reads the cache.
  */
 export function LiveStreamCard() {
   const { isConnected } = useAttendanceStreamStatus();
-  const { events: data } = useLiveAttendanceEvents();
-  // Skeleton only before the first connection when there's nothing cached to show.
-  const isPending = !isConnected && data.length === 0;
+  const { events: data, isPending } = useLiveAttendanceEvents();
 
   return (
     <Card style={{ flex: '1 1 330px', gap: 12 }}>

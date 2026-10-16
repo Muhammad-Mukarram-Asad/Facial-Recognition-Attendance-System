@@ -4,10 +4,9 @@ import type { ReactNode } from "react";
 
 import { APP_CONFIG } from "@/shared/config/app";
 import { useIsDesktop } from "@/shared/hooks/useMediaQuery";
-import { Icon } from "@/shared/ui";
+import { Logo } from "@/shared/ui/Logo";
 
 import { AuthBrandPanel } from "./AuthBrandPanel";
-import Image from "next/image";
 
 /** Split-screen auth layout: brand panel on desktop, compact header on mobile. */
 export function AuthShell({ children }: { children: ReactNode }) {
@@ -57,27 +56,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
                 paddingBottom: 4,
               }}
             >
-              <span
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 10,
-                  background: "var(--gradient-brand)",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#fff",
-                  flex: "none",
-                }}
-              >
-                {/* <Icon name="scan-face" size={19} /> */}
-                <Image
-                  src={"/logo.svg"}
-                  alt="JBS-logo"
-                  width={80}
-                  height={80}
-                />
-              </span>
+              <Logo height={36} locked />
               <span
                 style={{
                   fontSize: 16,

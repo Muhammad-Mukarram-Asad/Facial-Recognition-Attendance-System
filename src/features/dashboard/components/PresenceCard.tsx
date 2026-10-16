@@ -5,7 +5,6 @@ import type { AttendanceAnalytics } from "../types";
 
 const RADIUS = 52;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-const LEGEND_DELAY_MS = 300;
 
 function labelFor(attendanceDate: string): string {
   const [year, month, day] = attendanceDate.split("-").map(Number);
@@ -51,8 +50,8 @@ export function PresenceCard({ analytics }: { analytics: AttendanceAnalytics }) 
             gap: 1,
           }}
         >
-          <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em", color: "var(--text-strong)" }}>
-            <Counter value={analytics.present_percent} decimals={2} />%
+          <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em", color: "var(--text-strong)" }}>
+            <Counter value={analytics.present_percent} />%
           </span>
           <span
             style={{
@@ -87,27 +86,6 @@ export function PresenceCard({ analytics }: { analytics: AttendanceAnalytics }) 
             / <Counter value={analytics.total} />
           </span>
         </span>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px" }}>
-          {[
-            { color: "var(--priority-high)", suffix: "absent", count: analytics.absent, percent: analytics.absent_percent },
-            { color: "var(--warning)", suffix: "late", count: analytics.late, percent: analytics.late_percent },
-            { color: "var(--brand-blue-500)", suffix: "on leave", count: analytics.leave, percent: null },
-            { color: "var(--priority-high)", suffix: "blacklisted", count: analytics.blacklisted, percent: analytics.blacklisted_percent },
-          ].map((item) => (
-            <span
-              key={item.suffix}
-              style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--text-body)" }}
-            >
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: item.color }} />
-              <Counter value={item.count} delayMs={LEGEND_DELAY_MS} /> {item.suffix}
-              {item.percent != null && (
-                <span style={{ color: "var(--text-faint)" }}>
-                  (<Counter value={item.percent} decimals={2} delayMs={LEGEND_DELAY_MS} />%)
-                </span>
-              )}
-            </span>
-          ))}
-        </div>
       </div>
     </Card>
   );

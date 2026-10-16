@@ -23,7 +23,7 @@ export function EmployeesView() {
         display: "flex",
         flexWrap: "wrap",
         gap: 16,
-        alignItems: "flex-start",
+        alignItems: "stretch",
       }}
     >
       <EmployeeForm photoFile={photoFile} onSaved={handleSaved} />
@@ -33,7 +33,6 @@ export function EmployeesView() {
           minWidth: 0,
           display: "flex",
           flexDirection: "column",
-          gap: 16,
         }}
       >
         <FaceEnrollmentCard key={resetKey} onFileChange={setPhotoFile} />

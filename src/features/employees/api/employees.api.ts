@@ -47,6 +47,16 @@ export const employeesApi = {
     return { items, total: data.data.total ?? items.length };
   },
 
+  // GET /api/v1/employees/full — every employee, unfiltered. Search is
+  // applied to a local copy of this list, not by this request.
+  listAll: async (): Promise<EmployeeList> => {
+    const { data } = await apiClient.get<EmployeesListResponse>(
+      `${EMPLOYEES_API_URL}/full`,
+    );
+    const items = data.data.employees.map(toEmployee);
+    return { items, total: data.data.total ?? items.length };
+  },
+
   // GET /api/v1/employees/{employee_id}
   detail: async (employeeId: string): Promise<Employee> => {
     const { data } = await apiClient.get<EmployeeDetailResponse>(

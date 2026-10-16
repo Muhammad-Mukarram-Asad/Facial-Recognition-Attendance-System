@@ -1,6 +1,5 @@
 import { APP_CONFIG } from "@/shared/config/app";
-import { Icon } from "@/shared/ui";
-import Image from "next/image";
+import { Logo } from "@/shared/ui/Logo";
 
 /** The indigo marketing half of the auth split-screen. */
 export function AuthBrandPanel() {
@@ -29,27 +28,7 @@ export function AuthBrandPanel() {
           flexWrap: "wrap",
         }}
       >
-        {/* <span
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: 10,
-            background: "var(--gradient-brand)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff",
-            flex: "none",
-          }}
-        > */}
-        {/* <Icon name="scan-face" size={19} /> */}
-        <Image
-          src={"/logo.svg"}
-          alt="JBS-logo"
-          width={80}
-          height={80}
-        />
-        {/* </span> */}
+        <Logo height={40} locked />
         <span
           style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em" }}
         >
@@ -57,12 +36,13 @@ export function AuthBrandPanel() {
         </span>
         <span
           style={{
-            fontSize: 11,
+            fontSize: 14,
             fontWeight: 600,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
             color: "var(--text-on-inverse-muted)",
             paddingLeft: 10,
+            paddingTop: 4,
             borderLeft: "1px solid rgba(255,255,255,.18)",
           }}
         >

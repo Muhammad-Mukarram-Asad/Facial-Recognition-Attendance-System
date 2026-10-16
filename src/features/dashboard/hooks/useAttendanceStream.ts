@@ -8,8 +8,8 @@ import { queryKeys } from '@/shared/api/query-keys';
 import { getAuthToken } from '@/shared/lib/auth-token';
 
 import { ATTENDANCE_STREAM_URL, parseStreamEvent } from '../api/attendance-stream.api';
-import { streamEventKey, type AttendanceStreamEvent } from '../types';
-import { isWithinLiveWindow, liveAttendanceEventsQuery } from './useLiveAttendanceEvents';
+import type { AttendanceStreamEvent } from '../types';
+import { liveAttendanceEventsQuery, mergeAttendanceEvents } from './useLiveAttendanceEvents';
 
 /** Wait this long before reconnecting after the stream drops or errors. */
 const RECONNECT_INTERVAL_MS = 10_000;
@@ -29,10 +29,10 @@ const connectionQuery = queryOptions<boolean>({
 
 /**
  * Holds the one SSE connection to GET /api/v1/attendance/stream for the
- * whole signed-in session. Call it exactly once — AttendanceStreamConnection
- * does, from the console layout — so events are captured on every page, not
- * just the dashboard. Each event is written into the React Query cache
- * (liveAttendanceEventsQuery), which LiveStreamCard reads.
+ * whole signed-in session, and keeps the 24-hour snapshot query observed so
+ * it loads once even when the dashboard is not open. Call it exactly once —
+ * AttendanceStreamConnection does, from the console layout. Live frames are
+ * merged into that same cache; a reconnect does not fetch history again.
  */
 export function useAttendanceStream({ enabled = true }: { enabled?: boolean } = {}) {
   const queryClient = useQueryClient();
@@ -81,12 +81,9 @@ export function useAttendanceStream({ enabled = true }: { enabled?: boolean } = 
         // Exact key (not setQueriesData): creates the entry if nothing has
         // read it yet, e.g. signed in straight onto the employees page.
         // Frames have no id; dedupe on employee, time, type, and gate.
-        queryClient.setQueryData(liveAttendanceEventsQuery.queryKey, (existing = []) => {
-          const incomingKey = streamEventKey(incoming);
-          if (existing.some((item) => streamEventKey(item) === incomingKey)) return existing;
-          const now = Date.now();
-          return [incoming, ...existing].filter((item) => isWithinLiveWindow(item, now));
-        });
+        queryClient.setQueryData(liveAttendanceEventsQuery.queryKey, (existing = []) =>
+          mergeAttendanceEvents(existing, [incoming]),
+        );
 
       };
 

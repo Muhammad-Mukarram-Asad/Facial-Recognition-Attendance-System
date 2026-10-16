@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-import { useEmployees } from "@/features/employees/hooks/useEmployees";
+import { useAllEmployees } from "@/features/employees/hooks/useEmployees";
+import type { Employee } from "@/features/employees/types";
 import { ROUTES } from "@/shared/config/routes";
-import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
 import {
   Avatar,
   Button,
@@ -28,6 +28,21 @@ const MAX_PAGE_BUTTONS = 5;
 
 /** A sliding window of up to 5 page numbers, centered on the current page
  * and clamped to the valid range — e.g. page 7 of 20 -> [5, 6, 7, 8, 9]. */
+function employeeMatches(employee: Employee, query: string): boolean {
+  return [
+    employee.name,
+    employee.employeeId,
+    employee.email,
+    employee.phone,
+    employee.cnic,
+    employee.designation,
+    employee.department,
+  ]
+    .join(" ")
+    .toLowerCase()
+    .includes(query);
+}
+
 function getPageWindow(current: number, total: number, size = MAX_PAGE_BUTTONS): number[] {
   if (total <= size) return Array.from({ length: total }, (_, i) => i + 1);
   let start = Math.max(1, current - Math.floor(size / 2));
@@ -38,34 +53,36 @@ function getPageWindow(current: number, total: number, size = MAX_PAGE_BUTTONS):
 
 /**
  * Landing view for /employee-profile — the sidebar's "Employees" destination.
- * Lists the roster (paginated, server-side search); opening one goes to its
- * edit screen.
+ * Lists the roster. The API returns the whole list; search filters a copy
+ * of that list in the browser. Opening one goes to its edit screen.
  */
 export function ProfileDirectory() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const debounced = useDebouncedValue(search, 250);
 
   // A new search always starts back at page 1 — adjusted during render
   // (React's recommended pattern for this) rather than in an effect, so it
   // takes effect in the same render instead of causing an extra one.
-  const [settledSearch, setSettledSearch] = useState(debounced);
-  if (debounced !== settledSearch) {
-    setSettledSearch(debounced);
+  const [settledSearch, setSettledSearch] = useState(search);
+  const searchChanged = search !== settledSearch;
+  if (searchChanged) {
+    setSettledSearch(search);
     setPage(1);
   }
 
-  // page/limit/search (and includeDeleted, if needed) are the query params
-  // sent through to GET /api/v1/employees — see employeesApi.list in
-  // src/features/employees/api/employees.api.ts for how they're mapped.
-  const { data, isPending } = useEmployees({
-    search: debounced,
-    page,
-    limit: PAGE_SIZE,
-  });
-  const pageCount = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
-  const rangeStart = data && data.items.length > 0 ? (page - 1) * PAGE_SIZE + 1 : 0;
-  const rangeEnd = data && data.items.length > 0 ? rangeStart + data.items.length - 1 : 0;
+  const { data, isPending } = useAllEmployees();
+  const filtered = useMemo(() => {
+    const roster = [...(data?.items ?? [])];
+    const query = search.trim().toLowerCase();
+    if (!query) return roster;
+    return roster.filter((employee) => employeeMatches(employee, query));
+  }, [data?.items, search]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(searchChanged ? 1 : page, pageCount);
+  if (!searchChanged && currentPage !== page) setPage(currentPage);
+  const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const rangeStart = pageItems.length > 0 ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
+  const rangeEnd = pageItems.length > 0 ? rangeStart + pageItems.length - 1 : 0;
 
   return (
     <Card padding={22} style={{ gap: 14 }}>
@@ -99,7 +116,7 @@ export function ProfileDirectory() {
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by name or employee ID…"
+          placeholder="Search by name, ID, email, phone, CNIC, designation, or department"
           aria-label="Search employees"
           style={{
             flex: 1,
@@ -126,10 +143,11 @@ export function ProfileDirectory() {
             overflowY: "auto",
           }}
         >
-          {data?.items.map((employee) => (
+          {pageItems.map((employee) => (
             <Link
               key={employee.id}
               href={ROUTES.profileFor(employee.id)}
+              prefetch={false}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -181,7 +199,7 @@ export function ProfileDirectory() {
         </div>
       )}
 
-      {data && data.total > 0 && (
+      {filtered.length > 0 && (
         <div
           style={{
             display: "flex",
@@ -194,34 +212,34 @@ export function ProfileDirectory() {
         >
           <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
             Showing {rangeStart.toLocaleString()}–{rangeEnd.toLocaleString()} of{" "}
-            {data.total.toLocaleString()}
+            {filtered.length.toLocaleString()}
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <Button
               variant="ghost"
               size="sm"
               icon="chevron-left"
-              disabled={page <= 1}
+              disabled={currentPage <= 1}
               onClick={() => setPage((p) => p - 1)}
             >
               Prev
             </Button>
-            {getPageWindow(page, pageCount).map((p) => (
+            {getPageWindow(currentPage, pageCount).map((p) => (
               <button
                 key={p}
                 type="button"
                 onClick={() => setPage(p)}
-                aria-current={p === page ? "page" : undefined}
+                aria-current={p === currentPage ? "page" : undefined}
                 style={{
                   padding: "5px 12px",
                   border: "none",
                   borderRadius: "var(--radius-pill)",
                   cursor: "pointer",
                   fontSize: 12.5,
-                  fontWeight: p === page ? 700 : 500,
+                  fontWeight: p === currentPage ? 700 : 500,
                   background:
-                    p === page ? "var(--interactive-primary)" : "transparent",
-                  color: p === page ? "#fff" : "var(--text-muted)",
+                    p === currentPage ? "var(--interactive-primary)" : "transparent",
+                  color: p === currentPage ? "#fff" : "var(--text-muted)",
                 }}
               >
                 {p}
@@ -232,7 +250,7 @@ export function ProfileDirectory() {
               size="sm"
               icon="chevron-right"
               iconPosition="end"
-              disabled={page >= pageCount}
+              disabled={currentPage >= pageCount}
               onClick={() => setPage((p) => p + 1)}
             >
               Next

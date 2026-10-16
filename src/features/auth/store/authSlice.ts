@@ -1,22 +1,32 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 import { toApiError } from '@/shared/api/client';
-import { clearAuthToken, getAuthToken } from '@/shared/lib/auth-token';
+import { getAuthToken } from '@/shared/lib/auth-token';
 
 import { authApi } from '../api/auth.api';
+import { endAuthSession, readSavedSessionUser, updateSavedSessionUser } from '../lib/saved-session';
 import type { AuthUser } from '../types';
 
-/** Rehydrates the signed-in user from the token cookie on app load — see
- * StoreProvider. Short-circuits (no request) if there's no token yet. */
+/**
+ * Rehydrates the signed-in user on app load — see StoreProvider.
+ * A failed GET /me does not end the session while the 1-hour cookie and
+ * cached profile are still valid, so a reload stays on the console.
+ */
 export const fetchCurrentUser = createAsyncThunk<AuthUser, void, { rejectValue: string }>(
   'auth/fetchCurrentUser',
   async (_, { rejectWithValue }) => {
-    if (!getAuthToken()) return rejectWithValue('No session');
+    if (!getAuthToken()) {
+      endAuthSession();
+      return rejectWithValue('No session');
+    }
     try {
-      return await authApi.me();
+      const user = await authApi.me();
+      updateSavedSessionUser(user);
+      return user;
     } catch (error) {
-      // Stale/invalid token — drop it so the interceptor stops sending it.
-      clearAuthToken();
+      const cached = readSavedSessionUser();
+      if (cached) return cached;
+      endAuthSession();
       return rejectWithValue(toApiError(error).message);
     }
   },

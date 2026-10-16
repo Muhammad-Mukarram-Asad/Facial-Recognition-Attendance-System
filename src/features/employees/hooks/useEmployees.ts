@@ -14,6 +14,22 @@ export function useEmployees(query: EmployeeQuery = {}) {
   });
 }
 
+/**
+ * Full roster for the employees screen. Search filters a copy of `items`
+ * and does not refetch. Opening the screen again loads the latest list.
+ * Create, update, and delete also invalidate this cache.
+ */
+export function useAllEmployees() {
+  return useQuery({
+    queryKey: queryKeys.employees.directory(),
+    queryFn: () => employeesApi.listAll(),
+    staleTime: Infinity,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+}
+
 export function useRecentEmployees(limit = 5) {
   return useQuery({
     queryKey: queryKeys.employees.recent(),

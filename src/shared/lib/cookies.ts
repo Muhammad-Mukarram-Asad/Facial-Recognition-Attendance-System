@@ -1,9 +1,9 @@
 /** Minimal browser cookie helpers — no external dependency needed for
  * simple client-side get/set/delete. */
 
-export function setCookie(name: string, value: string, days: number): void {
+export function setCookie(name: string, value: string, maxAgeMs: number): void {
   if (typeof document === 'undefined') return;
-  const expires = new Date(Date.now() + days * 86_400_000).toUTCString();
+  const expires = new Date(Date.now() + maxAgeMs).toUTCString();
   document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
 }
 

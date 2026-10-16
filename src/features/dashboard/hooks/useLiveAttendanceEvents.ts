@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { queryOptions, skipToken, useQuery } from '@tanstack/react-query';
+import { queryOptions, useQuery } from '@tanstack/react-query';
 
+import { getQueryClient } from '@/shared/api/query-client';
 import { queryKeys } from '@/shared/api/query-keys';
 
-import type { AttendanceStreamEvent } from '../types';
+import { fetchAttendanceEvents } from '../api/attendance-stream.api';
+import { streamEventKey, type AttendanceStreamEvent } from '../types';
 
 /** Rolling live window: events leave the feed once they're older than this. */
 export const LIVE_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -16,16 +18,42 @@ export const LIVE_CLOCK_TICK_MS = 30_000;
 /** Stable fallback so the memo below doesn't recompute every render before the first event. */
 const NO_EVENTS: AttendanceStreamEvent[] = [];
 
+/** Newest first, duplicates dropped, events older than 24h removed. */
+export function mergeAttendanceEvents(
+  existing: AttendanceStreamEvent[],
+  incoming: AttendanceStreamEvent[],
+  now = Date.now(),
+): AttendanceStreamEvent[] {
+  const seen = new Set<string>();
+  const merged: AttendanceStreamEvent[] = [];
+  for (const event of [...incoming, ...existing]) {
+    if (!isWithinLiveWindow(event, now)) continue;
+    const key = streamEventKey(event);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(event);
+  }
+  return merged.sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
+}
+
 /**
- * The live feed's cache entry. The backend has no "today's events" snapshot
- * endpoint, so it never fetches (skipToken) — useAttendanceStream is its
- * only writer. That hook keeps an observer on it for the whole signed-in
- * session, so it's never garbage-collected while the console is open;
- * sign-out clears it with the rest of the cache (useSignOut → queryClient.clear()).
+ * The live feed's cache entry. GET /api/v1/attendance/events seeds the last
+ * 24 hours once per session; useAttendanceStream prepends frames that arrive
+ * after that. Sign-out clears it with the rest of the cache.
+ * The fetch merges with anything the stream already wrote, so a slow
+ * snapshot cannot wipe a newer gate event.
  */
 export const liveAttendanceEventsQuery = queryOptions<AttendanceStreamEvent[]>({
   queryKey: queryKeys.liveAttendance.today(),
-  queryFn: skipToken,
+  staleTime: Infinity,
+  refetchOnReconnect: false,
+  refetchOnWindowFocus: false,
+  queryFn: async () => {
+    const snapshot = await fetchAttendanceEvents();
+    const existing =
+      getQueryClient().getQueryData<AttendanceStreamEvent[]>(queryKeys.liveAttendance.today()) ?? [];
+    return mergeAttendanceEvents(existing, snapshot);
+  },
 });
 
 /** An unparseable timestamp is kept rather than silently dropped. */
@@ -44,15 +72,15 @@ export function useLiveClock(): number {
   return now;
 }
 
-/** The live feed (last 24h, newest first), read from the cache the stream writes into. */
+/** The live feed (last 24h, newest first): the events snapshot plus the stream. */
 export function useLiveAttendanceEvents() {
   const now = useLiveClock();
-  const { data = NO_EVENTS } = useQuery(liveAttendanceEventsQuery);
+  const { data = NO_EVENTS, isPending } = useQuery(liveAttendanceEventsQuery);
 
   const events = useMemo(
     () => data.filter((event) => isWithinLiveWindow(event, now)),
     [data, now],
   );
 
-  return { events, now };
+  return { events, now, isPending: isPending && events.length === 0 };
 }

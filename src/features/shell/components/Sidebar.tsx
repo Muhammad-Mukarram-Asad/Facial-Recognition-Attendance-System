@@ -8,7 +8,7 @@ import { APP_CONFIG } from "@/shared/config/app";
 import { NAV_ITEMS } from "@/shared/config/routes";
 import { initials } from "@/shared/lib/format";
 import { Icon } from "@/shared/ui";
-import Image from "next/image";
+import { Logo } from "@/shared/ui/Logo";
 
 import { NavPendingHint } from "./NavPendingHint";
 
@@ -48,27 +48,7 @@ export function Sidebar({ variant = "rail", onNavigate }: SidebarProps) {
           padding: "4px 4px 20px",
         }}
       >
-        {/* <span
-          style={{
-            width: 30,
-            height: 30,
-            borderRadius: 9,
-            background: "var(--gradient-brand)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flex: "none",
-            color: "#fff",
-          }}
-        > */}
-        {/* <Icon name="scan-face" size={17} /> */}
-        <Image
-          src={"/logo.svg"}
-          alt="JBS-logo"
-          width={80}
-          height={80}
-        />
-        {/* </span> */}
+        <Logo height={32} />
         <span
           style={{ fontSize: 12, fontWeight: 600, letterSpacing: "-0.02em" }}
         >

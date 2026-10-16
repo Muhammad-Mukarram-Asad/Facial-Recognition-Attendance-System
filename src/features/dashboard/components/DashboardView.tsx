@@ -11,6 +11,7 @@ import { startOfToday, toDayTimestamp } from "../types";
 import { DateRangeFilter } from "./DateRangeFilter";
 import { LiveStreamCard } from "./LiveStreamCard";
 import { PresenceCard } from "./PresenceCard";
+import { RecentAttendanceCard } from "./RecentAttendanceCard";
 
 const CARD_DELAY_MS = 550;
 
@@ -91,6 +92,7 @@ export function DashboardView() {
       )}
 
       <LiveStreamCard />
+      <RecentAttendanceCard />
     </div>
   );
 }

@@ -53,7 +53,7 @@ export function FaceEnrollmentCard({
   };
 
   return (
-    <Card padding={20} style={{ gap: 14 }}>
+    <Card padding={20} style={{ gap: 14, flex: 1, height: "100%" }}>
       <div
         style={{
           display: "flex",
@@ -84,7 +84,8 @@ export function FaceEnrollmentCard({
           borderRadius: "var(--radius-sm)",
           overflow: "hidden",
           background: "var(--surface-inverse-deep)",
-          height: 176,
+          flex: 1,
+          minHeight: 176,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
