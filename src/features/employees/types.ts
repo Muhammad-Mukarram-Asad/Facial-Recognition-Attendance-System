@@ -33,6 +33,8 @@ export const employeeSchema = z.object({
   absenceSmsToManager: z.boolean(),
   enrolledAngles: z.number(),
   createdAt: z.string(),
+  /** MinIO object key for the enrollment photo, or null when none is stored. */
+  photoPath: z.string().nullable(),
 });
 
 export const employeeListSchema = z.object({
@@ -158,6 +160,7 @@ export function toEmployee(record: RealEmployeeRecord): Employee {
     absenceSmsToManager: true,
     enrolledAngles: 0,
     createdAt: record.created_at ?? "",
+    photoPath: record.photo_path?.trim() ? record.photo_path : null,
   };
 }
 

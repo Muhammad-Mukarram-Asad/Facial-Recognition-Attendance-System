@@ -9,6 +9,8 @@ export interface FaceEnrollmentCardProps {
   /** Notified with the raw File whenever it's picked or cleared, so a
    * parent (e.g. the add-employee flow) can send it along with the form. */
   onFileChange?: (file: File | null) => void;
+  /** Saved enrollment photo for this employee. Shown until a new file is picked. */
+  existingPhotoUrl?: string | null;
 }
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png"];
@@ -16,16 +18,18 @@ const ACCEPTED_TYPES = ["image/jpeg", "image/png"];
 /** Kiosk capture preview — shows the scanning sweep until a photo is uploaded. */
 export function FaceEnrollmentCard({
   onFileChange,
+  existingPhotoUrl = null,
 }: FaceEnrollmentCardProps = {}) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [localPhotoUrl, setLocalPhotoUrl] = useState<string | null>(null);
+  const photoUrl = localPhotoUrl ?? existingPhotoUrl;
 
-  // Revoke the object URL when it's replaced or the card unmounts.
+  // Revoke only the locally picked object URL. The saved photo is a remote URL.
   useEffect(() => {
     return () => {
-      if (photoUrl) URL.revokeObjectURL(photoUrl);
+      if (localPhotoUrl) URL.revokeObjectURL(localPhotoUrl);
     };
-  }, [photoUrl]);
+  }, [localPhotoUrl]);
 
   const handleFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -37,7 +41,7 @@ export function FaceEnrollmentCard({
       return;
     }
 
-    setPhotoUrl((previous) => {
+    setLocalPhotoUrl((previous) => {
       if (previous) URL.revokeObjectURL(previous);
       return URL.createObjectURL(file);
     });
@@ -45,7 +49,7 @@ export function FaceEnrollmentCard({
   };
 
   const clearPhoto = () => {
-    setPhotoUrl((previous) => {
+    setLocalPhotoUrl((previous) => {
       if (previous) URL.revokeObjectURL(previous);
       return null;
     });
@@ -180,9 +184,9 @@ export function FaceEnrollmentCard({
           icon="upload"
           onClick={() => inputRef.current?.click()}
         >
-          Upload photo
+         {photoUrl ? "Update photo" : "Upload photo"}
         </Button>
-        {photoUrl && (
+        {localPhotoUrl && (
           <Button
             variant="secondary"
             size="sm"

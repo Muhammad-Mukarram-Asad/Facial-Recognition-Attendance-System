@@ -11,6 +11,21 @@ import {
 
 const EMPLOYEES_API_URL = "/employees";
 
+const SERVER_ASSETS_URL =
+  process.env.NEXT_PUBLIC_SERVER_ASSETS?.replace(/\/$/, "") ?? "";
+
+/**
+ * Turn a stored enrollment key (`employees/{code}/...`) into a URL the
+ * browser can load. Absolute URLs are returned as-is.
+ */
+export function employeePhotoUrl(
+  photoPath: string | null | undefined,
+): string | null {
+  if (!photoPath || !SERVER_ASSETS_URL) return null;
+  if (/^https?:\/\//i.test(photoPath)) return photoPath;
+  return `${SERVER_ASSETS_URL}/${photoPath.replace(/^\//, "")}`;
+}
+
 interface EmployeesListResponse {
   success: boolean;
   message: string;

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ROUTES } from '@/shared/config/routes';
 import { Button, Card, EmptyState } from '@/shared/ui';
 
+import { employeePhotoUrl } from '../api/employees.api';
 import { useEmployeeDetail } from '../hooks/useEmployees';
 import { EmployeeDetailLoading } from './EmployeeDetailLoading';
 import { EmployeeForm } from './EmployeeForm';
@@ -41,10 +42,19 @@ export function EmployeeDetailView({ employeeId }: { employeeId: string }) {
   if (isPending || !employee) return <EmployeeDetailLoading />;
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'stretch' }}>
       <EmployeeForm employee={employee} onSaved={backToList} onDeleted={backToList} />
-      <div style={{ flex: '1 1 280px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <FaceEnrollmentCard />
+      <div
+        style={{
+          flex: '1 1 280px',
+          minWidth: 0,
+          minHeight: 0,
+          alignSelf: 'stretch',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <FaceEnrollmentCard existingPhotoUrl={employeePhotoUrl(employee.photoPath)} />
       </div>
     </div>
   );
