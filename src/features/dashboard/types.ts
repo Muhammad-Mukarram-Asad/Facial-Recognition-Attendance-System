@@ -54,7 +54,7 @@ export const attendanceStreamEventSchema = z.object({
   employee_id: z.number(),
   timestamp: z.string(),
   location: z.string().optional().default(''),
-  photo_path: z
+  image_path: z
     .string()
     .nullable()
     .optional()

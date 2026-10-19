@@ -142,7 +142,8 @@ export function LiveStreamCard() {
 
 function GatePhoto({ event }: { event: AttendanceStreamEvent }) {
   const [failed, setFailed] = useState(false);
-  const src = streamPhotoUrl(event.photo_path);
+  const src = streamPhotoUrl(event.image_path);
+  console.log("src", src);
   const name = event.employee_name || `Employee ${event.employee_id}`;
 
   if (!src || failed) return <Avatar name={name} size={36} />;
@@ -150,7 +151,7 @@ function GatePhoto({ event }: { event: AttendanceStreamEvent }) {
   return (
     <img
       src={src}
-      alt=""
+      alt="image of employee"
       width={36}
       height={36}
       onError={() => setFailed(true)}

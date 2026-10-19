@@ -14,11 +14,14 @@ export const ATTENDANCE_STREAM_URL = `${API_BASE_URL}/attendance/stream`;
 
 const SERVER_ASSETS_URL = process.env.NEXT_PUBLIC_SERVER_ASSETS?.replace(/\/$/, '') ?? '';
 
-/** Prefix a gate `photo_path` with the MinIO / server assets base. */
-export function streamPhotoUrl(photoPath: string | null): string | null {
-  if (!photoPath || !SERVER_ASSETS_URL) return null;
-  if (/^https?:\/\//i.test(photoPath)) return photoPath;
-  return `${SERVER_ASSETS_URL}/${photoPath.replace(/^\//, '')}`;
+/** Prefix a gate `image_path` with the MinIO / server assets base. */
+export function streamPhotoUrl(imagePath: string | null): string | null {
+  if (!imagePath || !SERVER_ASSETS_URL) return null;
+  if (/^https?:\/\//i.test(imagePath)) return imagePath;
+  console.log("imagePath", imagePath);
+  console.log("SERVER_ASSETS_URL", SERVER_ASSETS_URL);
+  console.log(`${SERVER_ASSETS_URL}/${imagePath.replace(/^\//, '')}`);
+  return `${SERVER_ASSETS_URL}/${imagePath.replace(/^\//, '')}`;
 }
 
 /** GET /api/v1/attendance/events — newest first, rolling last 24 hours. */

@@ -31,6 +31,8 @@ export function EmployeesView() {
         style={{
           flex: "1 1 280px",
           minWidth: 0,
+          minHeight: 0,
+          alignSelf: "stretch",
           display: "flex",
           flexDirection: "column",
         }}

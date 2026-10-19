@@ -128,7 +128,7 @@ function GatePhoto({
   stacked: boolean;
 }) {
   const [failed, setFailed] = useState(false);
-  const src = streamPhotoUrl(event.photo_path);
+  const src = streamPhotoUrl(event.image_path);
   const size = stacked ? 112 : PHOTO_SIZE;
 
   if (!src || failed) {

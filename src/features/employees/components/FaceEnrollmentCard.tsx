@@ -53,7 +53,7 @@ export function FaceEnrollmentCard({
   };
 
   return (
-    <Card padding={20} style={{ gap: 14, flex: 1, height: "100%" }}>
+    <Card padding={20} style={{ gap: 14, flex: 1, height: "100%", minHeight: 0 }}>
       <div
         style={{
           display: "flex",
@@ -84,7 +84,7 @@ export function FaceEnrollmentCard({
           borderRadius: "var(--radius-sm)",
           overflow: "hidden",
           background: "var(--surface-inverse-deep)",
-          flex: 1,
+          flex: "1 1 0",
           minHeight: 176,
           display: "flex",
           alignItems: "center",
@@ -96,7 +96,13 @@ export function FaceEnrollmentCard({
           <img
             src={photoUrl}
             alt="Uploaded enrollment photo"
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+            }}
           />
         ) : (
           <>

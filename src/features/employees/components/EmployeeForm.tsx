@@ -311,7 +311,7 @@ export function EmployeeForm({
             <TextField
               label="Employee ID *"
               mono
-              placeholder="LTM-00512"
+              placeholder="EMP-00512"
               value={values.employeeId}
               error={errors.employeeId}
               onChange={set("employeeId")}
