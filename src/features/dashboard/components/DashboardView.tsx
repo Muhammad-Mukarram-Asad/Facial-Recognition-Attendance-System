@@ -76,7 +76,7 @@ export function DashboardView() {
               delayMs={CARD_DELAY_MS + 120}
               valueTone="warning"
             />
-            <CountCard label="On leave" value={data.leave} delayMs={CARD_DELAY_MS + 180} />
+            <CountCard label="Strangers" value={data.strangers} delayMs={CARD_DELAY_MS + 180} />
             <CountCard
               label="Blacklisted"
               value={data.blacklisted}

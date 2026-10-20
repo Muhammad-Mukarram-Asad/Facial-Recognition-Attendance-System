@@ -31,7 +31,8 @@ const MAX_PAGE_BUTTONS = 5;
 function employeeMatches(employee: Employee, query: string): boolean {
   return [
     employee.name,
-    employee.employeeId,
+    employee.id,
+    employee.employeeCode,
     employee.email,
     employee.phone,
     employee.cnic,
@@ -116,7 +117,7 @@ export function ProfileDirectory() {
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by name, ID, email, phone, CNIC, designation, or department"
+          placeholder="Search by name, code, email, phone, CNIC, designation, or department"
           aria-label="Search employees"
           style={{
             flex: 1,
@@ -190,7 +191,7 @@ export function ProfileDirectory() {
                     color: "var(--text-faint)",
                   }}
                 >
-                  {employee.employeeId} · {employee.department}
+                  {employee.employeeCode} · {employee.department}
                 </span>
               </span>
               <RowNavIndicator />

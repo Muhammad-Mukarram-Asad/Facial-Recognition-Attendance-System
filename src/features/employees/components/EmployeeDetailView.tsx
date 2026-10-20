@@ -16,9 +16,9 @@ import { FaceEnrollmentCard } from './FaceEnrollmentCard';
  * for editing, with delete alongside it. Landed on from the employee list;
  * saving or deleting sends the admin back there with the roster refreshed.
  */
-export function EmployeeDetailView({ employeeId }: { employeeId: string }) {
+export function EmployeeDetailView({ id }: { id: string }) {
   const router = useRouter();
-  const { data: employee, isPending, isError } = useEmployeeDetail(employeeId);
+  const { data: employee, isPending, isError } = useEmployeeDetail(id);
 
   const backToList = () => router.push(ROUTES.profile);
 

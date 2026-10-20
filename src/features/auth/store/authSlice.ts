@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-import { toApiError } from '@/shared/api/client';
+import { isUnauthorized, toApiError } from '@/shared/api/client';
 import { getAuthToken } from '@/shared/lib/auth-token';
 
 import { authApi } from '../api/auth.api';
@@ -9,8 +9,8 @@ import type { AuthUser } from '../types';
 
 /**
  * Rehydrates the signed-in user on app load — see StoreProvider.
- * A failed GET /me does not end the session while the 1-hour cookie and
- * cached profile are still valid, so a reload stays on the console.
+ * A network failure keeps the cached profile for the rest of the hour.
+ * An expired or invalid token ends the session instead.
  */
 export const fetchCurrentUser = createAsyncThunk<AuthUser, void, { rejectValue: string }>(
   'auth/fetchCurrentUser',
@@ -24,6 +24,10 @@ export const fetchCurrentUser = createAsyncThunk<AuthUser, void, { rejectValue: 
       updateSavedSessionUser(user);
       return user;
     } catch (error) {
+      if (isUnauthorized(error)) {
+        endAuthSession();
+        return rejectWithValue(toApiError(error).message);
+      }
       const cached = readSavedSessionUser();
       if (cached) return cached;
       endAuthSession();

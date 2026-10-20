@@ -72,10 +72,10 @@ export const employeesApi = {
     return { items, total: data.data.total ?? items.length };
   },
 
-  // GET /api/v1/employees/{employee_id}
-  detail: async (employeeId: string): Promise<Employee> => {
+  // GET /api/v1/employees/{id} — `id` is the integer primary key.
+  detail: async (id: string): Promise<Employee> => {
     const { data } = await apiClient.get<EmployeeDetailResponse>(
-      `${EMPLOYEES_API_URL}/${employeeId}`,
+      `${EMPLOYEES_API_URL}/${id}`,
     );
     return toEmployee(data.data);
   },
@@ -98,22 +98,28 @@ export const employeesApi = {
     });
   },
 
-  // PUT /api/v1/employees/{employee_id} — plain JSON, same field shape as
-  // create. Doesn't re-send the photo; there's no separate re-enrollment
-  // endpoint wired up here yet.
+  // PUT /api/v1/employees/{id} — plain JSON. `id` is the integer primary
+  // key, both in the path and in the body. Doesn't re-send the photo.
   update: async (
-    employeeId: string,
+    id: number,
     input: EmployeeWritePayload,
   ): Promise<Employee> => {
+    if (!Number.isInteger(id)) {
+      throw new Error("Employee id must be an integer");
+    }
     const { data } = await apiClient.put<EmployeeDetailResponse>(
-      `${EMPLOYEES_API_URL}/${employeeId}`,
-      input,
+      `${EMPLOYEES_API_URL}/${id}`,
+      { ...input, id },
     );
     return toEmployee(data.data);
   },
 
-  // DELETE /api/v1/employees/{employee_id}
-  remove: async (employeeId: string): Promise<void> => {
-    await apiClient.delete(`${EMPLOYEES_API_URL}/${employeeId}`);
+  // DELETE /api/v1/employees/{id} — `id` is the integer primary key.
+  remove: async (id: string): Promise<void> => {
+    const recordId = Number(id);
+    if (!Number.isInteger(recordId)) {
+      throw new Error("Employee id must be an integer");
+    }
+    await apiClient.delete(`${EMPLOYEES_API_URL}/${recordId}`);
   },
 };

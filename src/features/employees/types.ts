@@ -11,7 +11,10 @@ export const EMPLOYMENT_STATUSES = [
 
 export const employeeSchema = z.object({
   id: z.string(),
-  employeeId: z.string(),
+  employeeCode: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  /** First and last name together, for lists and avatars. */
   name: z.string(),
   designation: z.string(),
   designationId: z.number().nullable(),
@@ -44,8 +47,10 @@ export const employeeListSchema = z.object({
 
 /** Payload for create/update. Required fields mirror the asterisks in the design. */
 export const employeeInputSchema = z.object({
-  name: z.string().min(1, "Full name is required"),
-  employeeId: z.string().min(1, "Employee ID is required"),
+  id: z.number().optional(),
+  firstName: z.string().trim().min(1, "First name is required"),
+  lastName: z.string().optional().default(""),
+  employeeCode: z.string().min(1, "Employee Code is required"),
   cnic: z.string().optional().default(""),
   phone: z.string().optional().default(""),
   email: z.string().email("Enter a valid email").or(z.literal("")).default(""),
@@ -72,12 +77,14 @@ export type EmployeeInput = z.infer<typeof employeeInputSchema>;
 /**
  * The `employee_data` JSON body the real /api/v1/employees endpoints
  * accept (POST to create, PUT to update), confirmed against a working
- * request payload — snake_case, split name, `id_card_no` instead of
+ * request payload — snake_case, separate first and last name, `id_card_no` instead of
  * `cnic`. `email` is confirmed to exist on the record (see
  * RealEmployeeRecord) even though the first working create payload
  * happened not to include it.
  */
 export interface EmployeeWritePayload {
+  /** Workforce primary key. Sent as an integer on update. */
+  id?: number;
   employee_code: string;
   first_name: string;
   last_name: string;
@@ -134,11 +141,28 @@ export interface RealEmployeeRecord {
  * and designation now resolve to real names via their Redux slices where
  * the form renders them (this adapter itself has no store access).
  */
+/** A blank last name is shown and stored as a dash. */
+export function lastNameOrDash(lastName: string | null | undefined): string {
+  const trimmed = lastName?.trim() ?? "";
+  return trimmed ? trimmed : "-";
+}
+
+export function employeeDisplayName(firstName: string, lastName: string): string {
+  const first = firstName.trim();
+  const last = lastName.trim();
+  if (!last || last === "-") return first;
+  return `${first} ${last}`.trim();
+}
+
 export function toEmployee(record: RealEmployeeRecord): Employee {
+  const firstName = record.first_name?.trim() ?? "";
+  const lastName = lastNameOrDash(record.last_name);
   return {
     id: String(record.id ?? record.employee_code),
-    employeeId: record.employee_code,
-    name: record.full_name ?? `${record.first_name} ${record.last_name}`.trim(),
+    employeeCode: record.employee_code,
+    firstName,
+    lastName,
+    name: record.full_name?.trim() || employeeDisplayName(firstName, lastName),
     designation: record.job_title ?? "",
     designationId: record.designation_id ?? null,
     department:
@@ -172,8 +196,9 @@ export interface EmployeeQuery {
 }
 
 export const EMPTY_EMPLOYEE: EmployeeInput = {
-  name: "",
-  employeeId: "",
+  firstName: "",
+  lastName: "",
+  employeeCode: "",
   cnic: "",
   phone: "",
   email: "",

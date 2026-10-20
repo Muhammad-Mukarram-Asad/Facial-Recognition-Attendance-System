@@ -1,6 +1,7 @@
 import axios, { AxiosError, type AxiosRequestConfig } from "axios";
 import type { ZodType } from "zod";
 
+import { forceSignOut } from "@/features/auth/lib/force-sign-out";
 import { getAuthToken } from "@/shared/lib/auth-token";
 import type { ApiError } from "@/shared/types";
 
@@ -27,6 +28,27 @@ apiClient.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+/** 401, or a body that says the bearer token itself is no longer valid. */
+export function isUnauthorized(error: unknown): boolean {
+  if (!(error instanceof AxiosError)) return false;
+  if (error.response?.status === 401) return true;
+  const payload = error.response?.data as { message?: unknown; detail?: unknown } | undefined;
+  const message = `${payload?.message ?? ""} ${payload?.detail ?? ""}`.toLowerCase();
+  return message.includes("invalid token") || message.includes("token expired") || message.includes("token has expired");
+}
+
+function isSignInRequest(error: AxiosError): boolean {
+  return (error.config?.url ?? "").includes("/auth/signin");
+}
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    if (isUnauthorized(error) && !isSignInRequest(error)) forceSignOut();
+    return Promise.reject(error);
+  },
+);
 
 export function toApiError(error: unknown): ApiError {
   if (error instanceof AxiosError) {

@@ -63,11 +63,11 @@ export function RecentEmployeesCard() {
                 {employee.name}
               </span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-faint)' }}>
-                {employee.employeeId}
+                {employee.employeeCode}
               </span>
             </div>
             <Link
-              href={ROUTES.profileFor(employee.employeeId)}
+              href={ROUTES.profileFor(employee.id)}
               aria-label={`Edit ${employee.name}`}
               style={iconButton}
             >
@@ -76,7 +76,7 @@ export function RecentEmployeesCard() {
             <button
               type="button"
               aria-label={`Delete ${employee.name}`}
-              onClick={() => remove.mutate(employee.employeeId)}
+              onClick={() => remove.mutate(employee.id)}
               disabled={remove.isPending}
               style={iconButton}
             >

@@ -7,7 +7,11 @@ import { getQueryClient } from '@/shared/api/query-client';
 import { queryKeys } from '@/shared/api/query-keys';
 
 import { fetchAttendanceEvents } from '../api/attendance-stream.api';
-import { streamEventKey, type AttendanceStreamEvent } from '../types';
+import {
+  isStrangerEvent,
+  streamEventKey,
+  type AttendanceStreamEvent,
+} from '../types';
 
 /** Rolling live window: events leave the feed once they're older than this. */
 export const LIVE_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -18,22 +22,47 @@ export const LIVE_CLOCK_TICK_MS = 30_000;
 /** Stable fallback so the memo below doesn't recompute every render before the first event. */
 const NO_EVENTS: AttendanceStreamEvent[] = [];
 
-/** Newest first, duplicates dropped, events older than 24h removed. */
+/**
+ * Newest first, events older than 24h removed.
+ * Recognized employees collapse when the same gate frame is delivered twice.
+ * Strangers all share employee_id 0, so a matching fingerprint is kept as its
+ * own row instead of replacing the previous stranger.
+ */
 export function mergeAttendanceEvents(
   existing: AttendanceStreamEvent[],
   incoming: AttendanceStreamEvent[],
   now = Date.now(),
 ): AttendanceStreamEvent[] {
   const seen = new Set<string>();
-  const merged: AttendanceStreamEvent[] = [];
-  for (const event of [...incoming, ...existing]) {
+  const keptExisting: AttendanceStreamEvent[] = [];
+
+  for (const event of existing) {
     if (!isWithinLiveWindow(event, now)) continue;
     const key = streamEventKey(event);
     if (seen.has(key)) continue;
     seen.add(key);
-    merged.push(event);
+    keptExisting.push(event);
   }
-  return merged.sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
+
+  const acceptedIncoming: AttendanceStreamEvent[] = [];
+  for (const event of incoming) {
+    if (!isWithinLiveWindow(event, now)) continue;
+    let next = event;
+    let key = streamEventKey(next);
+    if (seen.has(key)) {
+      if (!isStrangerEvent(next)) continue;
+      let occurrence = 1;
+      while (seen.has(streamEventKey({ ...next, occurrence }))) occurrence += 1;
+      next = { ...next, occurrence };
+      key = streamEventKey(next);
+    }
+    seen.add(key);
+    acceptedIncoming.push(next);
+  }
+
+  return [...acceptedIncoming, ...keptExisting].sort(
+    (a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp),
+  );
 }
 
 /**

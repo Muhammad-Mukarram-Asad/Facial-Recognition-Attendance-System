@@ -8,7 +8,6 @@ import {
   Badge,
   Button,
   Card,
-  Checkbox,
   SelectField,
   TextField,
 } from "@/shared/ui";
@@ -22,9 +21,7 @@ import {
   useUpdateEmployee,
 } from "../hooks/useEmployees";
 import {
-  EMPLOYMENT_STATUSES,
   EMPTY_EMPLOYEE,
-  SHIFTS,
   employeeInputSchema,
   type Employee,
   type EmployeeInput,
@@ -40,27 +37,15 @@ import {
 function toInput(employee: Employee): EmployeeInput {
   return {
     ...EMPTY_EMPLOYEE,
-    name: employee.name,
-    employeeId: employee.employeeId,
-    cnic: employee.cnic,
-    phone: employee.phone,
+    firstName: employee.firstName,
+    lastName: employee.lastName.trim() ? employee.lastName : "-",
+    employeeCode: employee.employeeCode,
+    cnic: digitsOnly(employee.cnic, CNIC_DIGIT_LIMIT),
+    phone: digitsOnly(employee.phone, PHONE_DIGIT_LIMIT),
     email: employee.email,
     dateOfBirth: employee.dateOfBirth,
     departmentId: employee.departmentId ?? 0,
     designationId: employee.designationId ?? 0,
-  };
-}
-
-/** "Imran Qureshi" -> { firstName: "Imran", lastName: "Qureshi" }. The real
- * backend wants first/last name separately; the form still collects one
- * "Full name" field, so split it on the first space at submit time. */
-function splitName(fullName: string): { firstName: string; lastName: string } {
-  const trimmed = fullName.trim();
-  const spaceIndex = trimmed.indexOf(" ");
-  if (spaceIndex === -1) return { firstName: trimmed, lastName: trimmed };
-  return {
-    firstName: trimmed.slice(0, spaceIndex),
-    lastName: trimmed.slice(spaceIndex + 1).trim(),
   };
 }
 
@@ -72,6 +57,22 @@ function toIsoDate(ddmmyyyy: string): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+/** Official CNIC is 13 digits. Dashes are display-only: 42101-1234567-8. */
+const CNIC_DIGIT_LIMIT = 13;
+const PHONE_DIGIT_LIMIT = 11;
+
+function digitsOnly(raw: string, limit: number): string {
+  return raw.replace(/\D/g, "").slice(0, limit);
+}
+
+/** "4210112345678" -> "42101-1234567-8". Extra digits are dropped. */
+function formatCnic(raw: string): string {
+  const digits = digitsOnly(raw, CNIC_DIGIT_LIMIT);
+  if (digits.length <= 5) return digits;
+  if (digits.length <= 12) return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
+}
+
 /** Auto-inserts "/" as digits are typed, capping at dd/mm/yyyy. */
 function formatDateInput(raw: string): string {
   const digits = raw.replace(/\D/g, "").slice(0, 8);
@@ -81,9 +82,16 @@ function formatDateInput(raw: string): string {
   return digits;
 }
 
+/** Primary key from the loaded record. Employee codes are not this id. */
+function toIntegerId(value: string): number | null {
+  const id = Number(value);
+  return Number.isInteger(id) ? id : null;
+}
+
 /**
  * Builds the snake_case body the real backend's create (POST) and update
  * (PUT) endpoints both accept, out of the form's validated values.
+ * On update, `recordId` is the integer primary key sent as `id`.
  * department_id/designation_id come from the real pickers; job_title is
  * filled from the picked designation's own name (there's no separate
  * free-text job-title field in the live form). employment_status/is_active
@@ -93,19 +101,21 @@ function formatDateInput(raw: string): string {
 function buildWritePayload(
   data: EmployeeInput,
   designationName: string | undefined,
+  recordId?: number,
 ): EmployeeWritePayload {
-  const { firstName, lastName } = splitName(data.name);
+  const lastName = data.lastName.trim();
   return {
-    employee_code: data.employeeId,
-    first_name: firstName,
-    last_name: lastName,
+    ...(recordId !== undefined ? { id: recordId } : {}),
+    employee_code: data.employeeCode,
+    first_name: data.firstName.trim(),
+    last_name: lastName && lastName !== "-" ? lastName : "-",
     department_id: data.departmentId,
     designation_id: data.designationId,
-    shift_id: null,
+    shift_id: null, 
     employment_status: "active",
     is_active: true,
-    id_card_no: data.cnic || undefined,
-    phone: data.phone || undefined,
+    id_card_no: digitsOnly(data.cnic, CNIC_DIGIT_LIMIT) || undefined,
+    phone: digitsOnly(data.phone, PHONE_DIGIT_LIMIT) || undefined,
     email: data.email || undefined,
     date_of_birth: toIsoDate(data.dateOfBirth) || undefined,
     job_title: designationName ?? data.designation ?? undefined,
@@ -177,7 +187,7 @@ export function EmployeeForm({
       setSaved(false);
     };
 
-  const submit = (event: React.FormEvent, keepOpen: boolean) => {
+  const submit = (event: React.FormEvent) => {
     event.preventDefault();
     const parsed = employeeInputSchema.safeParse(values);
     if (!parsed.success) {
@@ -194,10 +204,15 @@ export function EmployeeForm({
     )?.name;
 
     if (isEdit && employee) {
+      const id = toIntegerId(employee.id);
+      if (id == null) {
+        toast.error("Employee id must be an integer");
+        return;
+      }
       update.mutate(
         {
-          employeeId: employee.employeeId,
-          input: buildWritePayload(parsed.data, selectedDesignationName),
+          id,
+          input: buildWritePayload(parsed.data, selectedDesignationName, id),
         },
         {
           onSuccess: () => {
@@ -225,9 +240,10 @@ export function EmployeeForm({
       },
       {
         onSuccess: () => {
-          setSaved(true);
+          setValues(EMPTY_EMPLOYEE);
+          setErrors({});
+          setSaved(false);
           toast.success("Employee created successfully");
-          if (keepOpen) setValues(EMPTY_EMPLOYEE);
           onSaved?.();
         },
         onError: (error) => {
@@ -239,15 +255,28 @@ export function EmployeeForm({
 
   const handleDelete = () => {
     if (!employee) return;
-    if (!window.confirm(`Delete ${employee.name}? This can't be undone.`))
-      return;
-    remove.mutate(employee.employeeId, {
-      onSuccess: () => {
-        toast.success("Employee deleted");
-        onDeleted?.();
+    toast.warning(`Delete ${employee.name}?`, {
+      id: `delete-employee-${employee.id}`,
+      description: "This can't be undone.",
+      position: "top-center",
+      duration: Infinity,
+      action: {
+        label: "Delete",
+        onClick: () => {
+          remove.mutate(employee.id, {
+            onSuccess: () => {
+              toast.success("Employee deleted");
+              onDeleted?.();
+            },
+            onError: (error) => {
+              toast.error(toApiError(error).message);
+            },
+          });
+        },
       },
-      onError: (error) => {
-        toast.error(toApiError(error).message);
+      cancel: {
+        label: "Cancel",
+        onClick: () => {},
       },
     });
   };
@@ -255,7 +284,7 @@ export function EmployeeForm({
   return (
     <Card padding={22} style={{ flex: "1 1 460px", gap: 22 }}>
       <form
-        onSubmit={(event) => submit(event, false)}
+        onSubmit={(event) => submit(event)}
         noValidate
         style={{ display: "contents" }}
       >
@@ -283,7 +312,7 @@ export function EmployeeForm({
               style={{ margin: 0, fontSize: 13.5, color: "var(--text-muted)" }}
             >
               {isEdit
-                ? "Update the record below. Employee ID can't be changed."
+                ? "Update the record below. Employee code can't be changed."
                 : "Fields marked with an asterisk are required for gate matching."}
             </p>
           </div>
@@ -302,34 +331,59 @@ export function EmployeeForm({
           <SectionLabel>Identity</SectionLabel>
           <div style={grid}>
             <TextField
-              label="Full name *"
-              placeholder="Imran Qureshi"
-              value={values.name}
-              error={errors.name}
-              onChange={set("name")}
+              label="First name *"
+              placeholder="Imran"
+              value={values.firstName}
+              error={errors.firstName}
+              onChange={set("firstName")}
             />
             <TextField
-              label="Employee ID *"
+              label="Last name"
+              placeholder="Qureshi"
+              value={values.lastName}
+              error={errors.lastName}
+              onChange={set("lastName")}
+            />
+            <TextField
+              label="Employee Code *"
               mono
-              placeholder="EMP-00512"
-              value={values.employeeId}
-              error={errors.employeeId}
-              onChange={set("employeeId")}
+              placeholder="A-0000"
+              value={values.employeeCode}
+              error={errors.employeeCode}
+              onChange={set("employeeCode")}
               disabled={isEdit}
             />
             <TextField
               label="CNIC / national ID"
               mono
+              inputMode="numeric"
+              autoComplete="off"
               placeholder="42101-1234567-8"
-              value={values.cnic}
-              onChange={set("cnic")}
+              maxLength={15}
+              value={formatCnic(values.cnic)}
+              onChange={(event) => {
+                setValues((prev) => ({
+                  ...prev,
+                  cnic: digitsOnly(event.target.value, CNIC_DIGIT_LIMIT),
+                }));
+                setSaved(false);
+              }}
             />
             <TextField
               label="Mobile number"
               mono
-              placeholder="+92 300 0000000"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="03001234567"
+              maxLength={PHONE_DIGIT_LIMIT}
               value={values.phone}
-              onChange={set("phone")}
+              onChange={(event) => {
+                setValues((prev) => ({
+                  ...prev,
+                  phone: digitsOnly(event.target.value, PHONE_DIGIT_LIMIT),
+                }));
+                setSaved(false);
+              }}
             />
             <TextField
               label="Email"

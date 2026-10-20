@@ -1,4 +1,5 @@
 import { QueryClient, isServer } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 
 function makeQueryClient() {
   return new QueryClient({
@@ -8,7 +9,10 @@ function makeQueryClient() {
         // short enough that gate data stays believable.
         staleTime: 30_000,
         gcTime: 5 * 60_000,
-        retry: 1,
+        retry: (failureCount, error) => {
+          if (isAxiosError(error) && error.response?.status === 401) return false;
+          return failureCount < 1;
+        },
         refetchOnWindowFocus: false,
       },
       mutations: {

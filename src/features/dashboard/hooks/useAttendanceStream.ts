@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { queryOptions, skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
 import { EventSourcePolyfill } from 'event-source-polyfill';
 
+import { forceSignOut } from '@/features/auth/lib/force-sign-out';
 import { queryKeys } from '@/shared/api/query-keys';
 import { getAuthToken } from '@/shared/lib/auth-token';
 
@@ -80,19 +81,25 @@ export function useAttendanceStream({ enabled = true }: { enabled?: boolean } = 
 
         // Exact key (not setQueriesData): creates the entry if nothing has
         // read it yet, e.g. signed in straight onto the employees page.
-        // Frames have no id; dedupe on employee, time, type, and gate.
+        // Strangers share employee_id 0 and are not collapsed into one row.
         queryClient.setQueryData(liveAttendanceEventsQuery.queryKey, (existing = []) =>
           mergeAttendanceEvents(existing, [incoming]),
         );
 
       };
 
-      es.onerror = () => {
+      es.onerror = (event) => {
+        const status = (event as { status?: number }).status;
         // Drops are expected (network blips, server restarts, heartbeat
         // timeout) — close and retry quietly rather than treating it as fatal.
+        // A rejected token is not a blip: leave the console for sign-in.
         es.close();
         eventSourceRef.current = null;
         setConnected(false);
+        if (status === 401) {
+          forceSignOut();
+          return;
+        }
         if (destroyed) return;
         reconnectTimerRef.current = setTimeout(() => {
           reconnectTimerRef.current = null;

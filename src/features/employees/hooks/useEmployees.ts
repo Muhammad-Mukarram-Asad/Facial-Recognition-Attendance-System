@@ -37,11 +37,11 @@ export function useRecentEmployees(limit = 5) {
   });
 }
 
-export function useEmployeeDetail(employeeId: string) {
+export function useEmployeeDetail(id: string) {
   return useQuery({
-    queryKey: queryKeys.employees.detail(employeeId),
-    queryFn: () => employeesApi.detail(employeeId),
-    enabled: Boolean(employeeId),
+    queryKey: queryKeys.employees.detail(id),
+    queryFn: () => employeesApi.detail(id),
+    enabled: Boolean(id),
   });
 }
 
@@ -65,12 +65,12 @@ export function useUpdateEmployee() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
-      employeeId,
+      id,
       input,
     }: {
-      employeeId: string;
+      id: number;
       input: EmployeeWritePayload;
-    }) => employeesApi.update(employeeId, input),
+    }) => employeesApi.update(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.employees.all() });
     },
