@@ -10,6 +10,7 @@ import { saveAuthToken } from "@/shared/lib/auth-token";
 import { useAppDispatch, useAppSelector } from "@/shared/store/hooks";
 
 import { authApi } from "../api/auth.api";
+import { allowFutureSignOut } from "../lib/force-sign-out";
 import { endAuthSession, saveAuthSession } from "../lib/saved-session";
 import { addUser, clearUser } from "../store/authSlice";
 
@@ -36,6 +37,7 @@ export function useSignIn() {
   return useMutation({
     mutationFn: authApi.signIn,
     onSuccess: ({ user, token }) => {
+      allowFutureSignOut();
       saveAuthToken(token);
       saveAuthSession(user);
       dispatch(addUser(user));

@@ -31,7 +31,7 @@ export const attendanceAnalyticsSchema = z.object({
     present: z.number(),
     absent: z.number(),
     late: z.number(),
-    leave: z.number(),
+    strangers: z.number(),
     blacklisted: z.number(),
     total: z.number(),
     present_percent: z.number(),
@@ -73,9 +73,26 @@ export const attendanceEventsResponseSchema = z.object({
   }),
 });
 
-export type AttendanceStreamEvent = z.infer<typeof attendanceStreamEventSchema>;
+export type AttendanceStreamEvent = z.infer<typeof attendanceStreamEventSchema> & {
+  /**
+   * Set when another stranger frame already used the same fingerprint.
+   * Unknown people all arrive with employee_id 0, so this keeps each one.
+   */
+  occurrence?: number;
+};
 
-/** Stable identity for a frame that has no event id. */
+/** Kafka sentinel: an unknown person, not a workforce row. */
+export const STRANGER_EMPLOYEE_ID = 0;
+
+export function isStrangerEvent(event: AttendanceStreamEvent): boolean {
+  return event.employee_id === STRANGER_EMPLOYEE_ID;
+}
+
+/**
+ * Stable identity for a frame that has no event id.
+ * Includes the capture path so two strangers at the same gate time stay distinct.
+ */
 export function streamEventKey(event: AttendanceStreamEvent): string {
-  return `${event.employee_id}|${event.timestamp}|${event.event_type}|${event.location}`;
+  const base = `${event.employee_id}|${event.timestamp}|${event.event_type}|${event.location}|${event.image_path ?? ''}`;
+  return event.occurrence == null ? base : `${base}|${event.occurrence}`;
 }

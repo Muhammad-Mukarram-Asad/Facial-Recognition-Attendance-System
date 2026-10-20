@@ -324,6 +324,25 @@ button {
 }
 *::-webkit-scrollbar-thumb:hover { background-color: var(--neutral-400); background-clip: content-box; }
 
+/* Confirmation toasts use position top-center and sit in the middle of the screen. */
+[data-sonner-toaster][data-x-position="center"][data-y-position="top"] {
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translate(-50%, -50%) !important;
+  width: min(380px, calc(100vw - 32px));
+}
+
+@media (max-width: 600px) {
+  [data-sonner-toaster][data-x-position="center"][data-y-position="top"] {
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    width: min(380px, calc(100vw - 32px)) !important;
+    transform: translate(-50%, -50%) !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

@@ -5,7 +5,7 @@ export const ROUTES = {
   attendance: "/attendance-records",
   employees: "/employees",
   profile: "/employee-profile",
-  profileFor: (employeeId: string) => `/employee-profile/${employeeId}`,
+  profileFor: (id: string) => `/employee-profile/${id}`,
 } as const;
 
 export interface NavItem {

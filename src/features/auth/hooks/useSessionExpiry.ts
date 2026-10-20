@@ -2,15 +2,14 @@
 
 import { useEffect } from 'react';
 
-import { useAppDispatch, useAppSelector } from '@/shared/store/hooks';
+import { useAppSelector } from '@/shared/store/hooks';
 
-import { endAuthSession, getSavedSessionExpiresAt } from '../lib/saved-session';
-import { clearUser } from '../store/authSlice';
+import { forceSignOut } from '../lib/force-sign-out';
+import { getSavedSessionExpiresAt } from '../lib/saved-session';
 
 /** Signs the user out when the 1-hour deadline is reached, including after
  * the tab has been backgrounded past that time. */
 export function useSessionExpiry() {
-  const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
 
   useEffect(() => {
@@ -19,10 +18,7 @@ export function useSessionExpiry() {
     const expiresAt = getSavedSessionExpiresAt();
     if (expiresAt === null) return;
 
-    const logout = () => {
-      endAuthSession();
-      dispatch(clearUser());
-    };
+    const logout = () => forceSignOut();
 
     if (expiresAt <= Date.now()) {
       logout();
@@ -39,5 +35,5 @@ export function useSessionExpiry() {
       window.clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [user, dispatch]);
+  }, [user]);
 }
