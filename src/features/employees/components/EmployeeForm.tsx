@@ -34,6 +34,16 @@ import {
  * Employment + attendance rules aren't returned as editable fields yet, so
  * those inputs stay disabled and blank.
  */
+/** Select fields store ids as strings after a change; numbers and strings still match. */
+function formValuesMatch(a: EmployeeInput, b: EmployeeInput): boolean {
+  return (Object.keys(a) as (keyof EmployeeInput)[]).every((key) => {
+    const left = a[key];
+    const right = b[key];
+    if (typeof left === "boolean" || typeof right === "boolean") return left === right;
+    return String(left ?? "") === String(right ?? "");
+  });
+}
+
 function toInput(employee: Employee): EmployeeInput {
   return {
     ...EMPTY_EMPLOYEE,
@@ -174,6 +184,10 @@ export function EmployeeForm({
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [initialValues] = useState<EmployeeInput | null>(() =>
+    employee ? toInput(employee) : null,
+  );
+  const hasChanges = initialValues != null && !formValuesMatch(initialValues, values);
 
   const set =
     <K extends keyof EmployeeInput>(key: K) =>
@@ -204,6 +218,7 @@ export function EmployeeForm({
     )?.name;
 
     if (isEdit && employee) {
+      if (!hasChanges) return;
       const id = toIntegerId(employee.id);
       if (id == null) {
         toast.error("Employee id must be an integer");
@@ -258,8 +273,11 @@ export function EmployeeForm({
     toast.warning(`Delete ${employee.name}?`, {
       id: `delete-employee-${employee.id}`,
       description: "This can't be undone.",
-      position: "top-center",
       duration: Infinity,
+      actionButtonStyle: {
+        background: "var(--priority-high)",
+        color: "#fff",
+      },
       action: {
         label: "Delete",
         onClick: () => {
@@ -316,15 +334,17 @@ export function EmployeeForm({
                 : "Fields marked with an asterisk are required for gate matching."}
             </p>
           </div>
-          <Badge tone={saved ? "success" : "brand"} dot={saved}>
-            {saved
-              ? isEdit
-                ? "Changes saved"
-                : "Employee saved"
-              : isEdit
-                ? "Unsaved changes"
-                : "Draft autosaved"}
-          </Badge>
+          {(!isEdit || hasChanges || saved) && (
+            <Badge tone={saved && !hasChanges ? "success" : "brand"} dot={saved && !hasChanges}>
+              {isEdit
+                ? hasChanges
+                  ? "Unsaved changes"
+                  : "Changes saved"
+                : saved
+                  ? "Employee saved"
+                  : "Draft autosaved"}
+            </Badge>
+          )}
         </div>
 
         <div>
@@ -567,9 +587,11 @@ export function EmployeeForm({
         >
           {isEdit ? (
             <>
-              <Button type="submit" icon="check" loading={update.isPending}>
-                Save changes
-              </Button>
+              {hasChanges && (
+                <Button type="submit" icon="check" loading={update.isPending}>
+                  Update changes
+                </Button>
+              )}
               <span style={{ flex: 1, minWidth: 0 }} />
               <Button
                 type="button"

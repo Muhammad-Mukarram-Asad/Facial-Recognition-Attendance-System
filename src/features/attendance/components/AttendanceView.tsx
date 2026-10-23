@@ -5,11 +5,40 @@ import { useMemo, useState, type ReactNode } from "react";
 import { DateRangeFilter } from "@/features/dashboard/components/DateRangeFilter";
 import { orDash } from "@/shared/lib/format";
 import { useIsDesktop } from "@/shared/hooks/useMediaQuery";
-import { Avatar, Badge, Button, Card, EmptyState, Icon, SkeletonRows } from "@/shared/ui";
+import { Avatar, Badge, Button, Card, EmptyState, Icon, SegmentedControl, SkeletonRows } from "@/shared/ui";
 import type { Tone } from "@/shared/types";
 
 import { useAttendanceRegister } from "../hooks/useAttendance";
-import { startOfToday, toRegisterTimestamp, type AttendanceRecord } from "../types";
+import { startOfToday, toRegisterTimestamp, type AttendanceRecord, type AttendanceRegister } from "../types";
+
+/** Unknown people arrive with employee id 0, same as the live gate stream. */
+const STRANGER_EMPLOYEE_ID = 0;
+
+const STATUS_FILTERS = [
+  { value: "all", label: "All" },
+  { value: "present", label: "Present" },
+  { value: "absent", label: "Absent" },
+  { value: "late", label: "Late" },
+  { value: "strangers", label: "Strangers" },
+] as const;
+
+type StatusFilter = (typeof STATUS_FILTERS)[number]["value"];
+
+function matchesStatus(record: AttendanceRecord, filter: StatusFilter): boolean {
+  const status = record.status.trim().toLowerCase();
+  switch (filter) {
+    case "all":
+      return true;
+    case "present":
+      return status === "present";
+    case "absent":
+      return status === "absent";
+    case "late":
+      return record.is_late || status === "late";
+    case "strangers":
+      return record.employee_id === STRANGER_EMPLOYEE_ID || status === "stranger" || status === "strangers";
+  }
+}
 
 const GRID =
   "minmax(180px,1.5fr) 72px minmax(120px,1fr) minmax(120px,1fr) 88px 88px 64px 96px 72px 110px";
@@ -17,6 +46,8 @@ const GRID =
 function statusTone(status: string): Tone {
   if (status === "present") return "success";
   if (status === "absent") return "high";
+  if (status === "late") return "warning";
+  if (status === "stranger" || status === "strangers") return "medium";
   if (status === "leave") return "medium";
   return "neutral";
 }
@@ -48,24 +79,39 @@ function yesNo(value: boolean): string {
   return value ? "Yes" : "No";
 }
 
+function copyRegister(data: AttendanceRegister): AttendanceRegister {
+  return {
+    ...data,
+    records: data.records.map((record) => ({ ...record })),
+  };
+}
+
 export function AttendanceView() {
   const isDesktop = useIsDesktop();
   const [date, setDate] = useState(startOfToday);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const register = useAttendanceRegister(toRegisterTimestamp(date));
 
-  const records = register.data?.records ?? [];
+  // The register request returns the whole day. Status filters run on a
+  // local copy so changing the chip does not refetch.
+  const snapshot = useMemo(
+    () => (register.data ? copyRegister(register.data) : null),
+    [register.data],
+  );
+  const records = snapshot?.records ?? [];
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return records;
-    return records.filter((record) =>
-      [record.name, String(record.employee_id), record.designation, record.department, record.status]
+    return records.filter((record) => {
+      if (!matchesStatus(record, statusFilter)) return false;
+      if (!query) return true;
+      return [record.name, String(record.employee_id), record.designation, record.department, record.status]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
-        .includes(query),
-    );
-  }, [records, search]);
+        .includes(query);
+    });
+  }, [records, search, statusFilter]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -103,8 +149,17 @@ export function AttendanceView() {
             />
           </label>
           <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-faint)" }}>
-            {register.data ? `${filtered.length} of ${register.data.total}` : "—"}
+            {snapshot ? `${filtered.length} of ${snapshot.total}` : "—"}
           </span>
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <SegmentedControl
+            size="sm"
+            ariaLabel="Filter attendance by status"
+            options={[...STATUS_FILTERS]}
+            value={statusFilter}
+            onChange={(value) => setStatusFilter(value as StatusFilter)}
+          />
         </div>
       </Card>
 
@@ -124,7 +179,13 @@ export function AttendanceView() {
       ) : filtered.length === 0 ? (
         <Card padding={0}>
           <EmptyState
-            message={records.length === 0 ? "No attendance rows for this day" : "No records match that search"}
+            message={
+              records.length === 0
+                ? "No attendance rows for this day"
+                : search.trim()
+                  ? "No records match that search"
+                  : "No records match that status"
+            }
             icon="search-x"
           />
         </Card>
@@ -167,9 +228,9 @@ function RecordTable({ records }: { records: AttendanceRecord[] }) {
           <span>Late</span>
           <span>Early departure</span>
         </div>
-        {records.map((record) => (
+        {records.map((record, index) => (
           <div
-            key={record.employee_id}
+            key={`${record.employee_id}-${index}`}
             style={{
               display: "grid",
               gridTemplateColumns: GRID,
@@ -216,8 +277,8 @@ function RecordTable({ records }: { records: AttendanceRecord[] }) {
 function RecordCards({ records }: { records: AttendanceRecord[] }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {records.map((record) => (
-        <Card key={record.employee_id} padding="14px 16px" style={{ gap: 10 }}>
+      {records.map((record, index) => (
+        <Card key={`${record.employee_id}-${index}`} padding="14px 16px" style={{ gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Avatar name={record.name} size={36} />
             <div style={{ flex: 1, minWidth: 0 }}>

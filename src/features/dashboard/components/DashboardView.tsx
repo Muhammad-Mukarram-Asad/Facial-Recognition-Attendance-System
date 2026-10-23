@@ -84,7 +84,6 @@ export function DashboardView() {
               delayMs={CARD_DELAY_MS + 240}
               valueTone="high"
             />
-            <CountCard label="Total" value={data.total} delayMs={CARD_DELAY_MS + 300} />
             <CountCard label="Total employees" value={data.total_employees} delayMs={CARD_DELAY_MS + 360} />
             <CountCard label="Enrolled faces" value={data.enrolled_faces} delayMs={CARD_DELAY_MS + 420} />
           </StatGrid>
