@@ -3,6 +3,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { authReducer } from '@/features/auth/store/authSlice';
 import { departmentsReducer } from '@/features/departments/store/departmentsSlice';
 import { designationsReducer } from '@/features/designations/store/designationsSlice';
+import { shiftsReducer } from '@/features/shifts/store/shiftsSlice';
 
 export function makeStore() {
   return configureStore({
@@ -10,6 +11,7 @@ export function makeStore() {
       auth: authReducer,
       departments: departmentsReducer,
       designations: designationsReducer,
+      shifts: shiftsReducer,
     },
   });
 }

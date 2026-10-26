@@ -81,7 +81,7 @@ export function AuthBrandPanel() {
             textWrap: "pretty",
           }}
         >
-          Faces are matched at the gate in under 300&nbsp;ms. Punctuality,
+          Faces are matched at the gate in under 500&nbsp;ms. Punctuality,
           absence and shift compliance land on your dashboard before the shift
           starts.
         </p>

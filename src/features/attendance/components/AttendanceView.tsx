@@ -8,36 +8,39 @@ import { useIsDesktop } from "@/shared/hooks/useMediaQuery";
 import { Avatar, Badge, Button, Card, EmptyState, Icon, SegmentedControl, SkeletonRows } from "@/shared/ui";
 import type { Tone } from "@/shared/types";
 
+import type { AttendanceRegisterQuery } from "../api/attendance.api";
 import { useAttendanceRegister } from "../hooks/useAttendance";
-import { startOfToday, toRegisterTimestamp, type AttendanceRecord, type AttendanceRegister } from "../types";
+import {
+  AttendanceStatus,
+  startOfToday,
+  toRegisterTimestamp,
+  type AttendanceRecord,
+  type AttendanceRegister,
+} from "../types";
 
-/** Unknown people arrive with employee id 0, same as the live gate stream. */
-const STRANGER_EMPLOYEE_ID = 0;
+const PAGE_SIZE = 100;
+const PAGE_WINDOW = 5;
+
+const STATUS_LABELS: Record<AttendanceStatus, string> = {
+  present: "Present",
+  absent: "Absent",
+  late: "Late",
+  early: "Early",
+};
 
 const STATUS_FILTERS = [
   { value: "all", label: "All" },
-  { value: "present", label: "Present" },
-  { value: "absent", label: "Absent" },
-  { value: "late", label: "Late" },
-  { value: "strangers", label: "Strangers" },
-] as const;
+  ...AttendanceStatus.options.map((value) => ({ value, label: STATUS_LABELS[value] })),
+];
 
 type StatusFilter = (typeof STATUS_FILTERS)[number]["value"];
 
-function matchesStatus(record: AttendanceRecord, filter: StatusFilter): boolean {
-  const status = record.status.trim().toLowerCase();
-  switch (filter) {
-    case "all":
-      return true;
-    case "present":
-      return status === "present";
-    case "absent":
-      return status === "absent";
-    case "late":
-      return record.is_late || status === "late";
-    case "strangers":
-      return record.employee_id === STRANGER_EMPLOYEE_ID || status === "stranger" || status === "strangers";
-  }
+/** Present and absent go out as `status`. Late and early also set the boolean flags. */
+function filterToQuery(timestamp: string, filter: StatusFilter): AttendanceRegisterQuery {
+  if (filter === "late") return { timestamp, status: "late", is_late: true };
+  if (filter === "early") return { timestamp, status: "early", is_early_departure: true };
+  if (filter === "present" || filter === "absent") return { timestamp, status: filter };
+  return { timestamp };
 }
 
 const GRID =
@@ -46,9 +49,7 @@ const GRID =
 function statusTone(status: string): Tone {
   if (status === "present") return "success";
   if (status === "absent") return "high";
-  if (status === "late") return "warning";
-  if (status === "stranger" || status === "strangers") return "medium";
-  if (status === "leave") return "medium";
+  if (status === "late" || status === "early") return "warning";
   return "neutral";
 }
 
@@ -91,10 +92,21 @@ export function AttendanceView() {
   const [date, setDate] = useState(startOfToday);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const register = useAttendanceRegister(toRegisterTimestamp(date));
+  const [page, setPage] = useState(1);
+  const [windowStart, setWindowStart] = useState(1);
+  const timestamp = toRegisterTimestamp(date);
+  const register = useAttendanceRegister(filterToQuery(timestamp, statusFilter));
 
-  // The register request returns the whole day. Status filters run on a
-  // local copy so changing the chip does not refetch.
+  // Date, status, and search each restart the list at page 1.
+  const listKey = `${timestamp}|${statusFilter}|${search}`;
+  const [settledListKey, setSettledListKey] = useState(listKey);
+  const listChanged = listKey !== settledListKey;
+  if (listChanged) {
+    setSettledListKey(listKey);
+    setPage(1);
+    setWindowStart(1);
+  }
+
   const snapshot = useMemo(
     () => (register.data ? copyRegister(register.data) : null),
     [register.data],
@@ -103,7 +115,6 @@ export function AttendanceView() {
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return records.filter((record) => {
-      if (!matchesStatus(record, statusFilter)) return false;
       if (!query) return true;
       return [record.name, String(record.employee_id), record.designation, record.department, record.status]
         .filter(Boolean)
@@ -111,7 +122,30 @@ export function AttendanceView() {
         .toLowerCase()
         .includes(query);
     });
-  }, [records, search, statusFilter]);
+  }, [records, search]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(listChanged ? 1 : page, pageCount);
+  const currentWindowStart = listChanged || windowStart > pageCount ? 1 : windowStart;
+  if (!listChanged && (currentPage !== page || currentWindowStart !== windowStart)) {
+    setPage(currentPage);
+    setWindowStart(currentWindowStart);
+  }
+  const pageRecords = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const rangeStart = pageRecords.length > 0 ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
+  const rangeEnd = pageRecords.length > 0 ? rangeStart + pageRecords.length - 1 : 0;
+
+  const selectPage = (next: number) => {
+    const clicked = Math.min(Math.max(1, next), pageCount);
+    const windowEnd = Math.min(pageCount, currentWindowStart + PAGE_WINDOW - 1);
+    let start = currentWindowStart;
+    // The last visible number becomes the start of the next window: 1–5, then 5–9, then 9–13.
+    if (clicked === windowEnd && clicked < pageCount) start = clicked;
+    else if (clicked < currentWindowStart) start = Math.max(1, clicked - PAGE_WINDOW + 1);
+    else if (clicked > windowEnd) start = clicked;
+    setWindowStart(start);
+    setPage(clicked);
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -172,7 +206,7 @@ export function AttendanceView() {
             Retry
           </Button>
         </Card>
-      ) : register.isPending || !register.data ? (
+      ) : register.isPending || !register.data || register.isPlaceholderData ? (
         <Card padding={18}>
           <SkeletonRows rows={8} height={44} />
         </Card>
@@ -189,11 +223,92 @@ export function AttendanceView() {
             icon="search-x"
           />
         </Card>
-      ) : isDesktop ? (
-        <RecordTable records={filtered} />
       ) : (
-        <RecordCards records={filtered} />
+        <>
+          {isDesktop ? <RecordTable records={pageRecords} /> : <RecordCards records={pageRecords} />}
+          <RecordPagination
+            page={currentPage}
+            pageCount={pageCount}
+            windowStart={currentWindowStart}
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+            total={filtered.length}
+            onSelect={selectPage}
+          />
+        </>
       )}
+    </div>
+  );
+}
+
+function RecordPagination({
+  page,
+  pageCount,
+  windowStart,
+  rangeStart,
+  rangeEnd,
+  total,
+  onSelect,
+}: {
+  page: number;
+  pageCount: number;
+  windowStart: number;
+  rangeStart: number;
+  rangeEnd: number;
+  total: number;
+  onSelect: (page: number) => void;
+}) {
+  const windowEnd = Math.min(pageCount, windowStart + PAGE_WINDOW - 1);
+  const pages: number[] = [];
+  for (let number = windowStart; number <= windowEnd; number += 1) pages.push(number);
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
+        Showing {rangeStart.toLocaleString()}–{rangeEnd.toLocaleString()} of {total.toLocaleString()}
+      </span>
+      <nav aria-label="Attendance record pages" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <Button variant="ghost" size="sm" icon="chevron-left" disabled={page <= 1} onClick={() => onSelect(page - 1)}>
+          Prev
+        </Button>
+        {pages.map((number) => (
+          <button
+            key={number}
+            type="button"
+            onClick={() => onSelect(number)}
+            aria-current={number === page ? "page" : undefined}
+            style={{
+              padding: "5px 12px",
+              border: "none",
+              borderRadius: "var(--radius-pill)",
+              cursor: "pointer",
+              fontSize: 12.5,
+              fontWeight: number === page ? 700 : 500,
+              background: number === page ? "var(--interactive-primary)" : "transparent",
+              color: number === page ? "#fff" : "var(--text-muted)",
+            }}
+          >
+            {number}
+          </button>
+        ))}
+        <Button
+          variant="ghost"
+          size="sm"
+          icon="chevron-right"
+          iconPosition="end"
+          disabled={page >= pageCount}
+          onClick={() => onSelect(page + 1)}
+        >
+          Next
+        </Button>
+      </nav>
     </div>
   );
 }

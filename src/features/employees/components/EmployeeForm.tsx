@@ -14,6 +14,7 @@ import {
 
 import { useDepartments } from "@/features/departments/hooks/useDepartments";
 import { useDesignations } from "@/features/designations/hooks/useDesignations";
+import { useShifts } from "@/features/shifts/hooks/useShifts";
 
 import {
   useCreateEmployee,
@@ -56,6 +57,7 @@ function toInput(employee: Employee): EmployeeInput {
     dateOfBirth: employee.dateOfBirth,
     departmentId: employee.departmentId ?? 0,
     designationId: employee.designationId ?? 0,
+    shiftId: employee.shiftId ?? 0,
   };
 }
 
@@ -102,11 +104,9 @@ function toIntegerId(value: string): number | null {
  * Builds the snake_case body the real backend's create (POST) and update
  * (PUT) endpoints both accept, out of the form's validated values.
  * On update, `recordId` is the integer primary key sent as `id`.
- * department_id/designation_id come from the real pickers; job_title is
- * filled from the picked designation's own name (there's no separate
- * free-text job-title field in the live form). employment_status/is_active
- * default to "active"/true — the rest of the Employment section (shift,
- * joining date, etc.) is still disabled, so shift_id stays null.
+ * department_id, designation_id, and shift_id come from the pickers.
+ * job_title is filled from the picked designation's own name.
+ * employment_status/is_active default to "active"/true.
  */
 function buildWritePayload(
   data: EmployeeInput,
@@ -121,7 +121,7 @@ function buildWritePayload(
     last_name: lastName && lastName !== "-" ? lastName : "-",
     department_id: data.departmentId,
     designation_id: data.designationId,
-    shift_id: null, 
+    shift_id: data.shiftId,
     employment_status: "active",
     is_active: true,
     id_card_no: digitsOnly(data.cnic, CNIC_DIGIT_LIMIT) || undefined,
@@ -178,6 +178,7 @@ export function EmployeeForm({
   const remove = useDeleteEmployee();
   const departments = useDepartments();
   const designations = useDesignations();
+  const shifts = useShifts();
 
   const [values, setValues] = useState<EmployeeInput>(
     employee ? toInput(employee) : EMPTY_EMPLOYEE,
@@ -480,6 +481,28 @@ export function EmployeeForm({
               error={errors.designationId}
               onChange={set("designationId")}
               disabled={designations.status === "loading"}
+            />
+            <SelectField
+              label="Shift *"
+              options={[
+                {
+                  value: "",
+                  label:
+                    shifts.status === "loading"
+                      ? "Loading shifts…"
+                      : shifts.status === "failed"
+                        ? "Couldn't load shifts"
+                        : "Select a shift",
+                },
+                ...shifts.items.map((shift) => ({
+                  value: String(shift.id),
+                  label: shift.name,
+                })),
+              ]}
+              value={values.shiftId ? String(values.shiftId) : ""}
+              error={errors.shiftId}
+              onChange={set("shiftId")}
+              disabled={shifts.status === "loading"}
             />
           </div>
         </div>

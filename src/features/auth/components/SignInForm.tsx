@@ -129,9 +129,9 @@ export function SignInForm() {
       <p
         style={{
           margin: 0,
-          fontSize: 12.5,
+          fontSize: 12,
           lineHeight: 1.5,
-          color: "var(--text-faint)",
+          color: "var(--text-strong)",
         }}
       >
         Accounts are issued by your FaceTrack administrator. Contact them if you

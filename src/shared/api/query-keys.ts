@@ -9,7 +9,13 @@ export const queryKeys = {
     analytics: (timestamp: string) => ["dashboard", "analytics", timestamp] as const,
   },
   attendance: {
-    register: (timestamp: string) => ["attendance", "register", timestamp] as const,
+    register: (
+      timestamp: string,
+      status?: string,
+      isLate?: boolean,
+      isEarlyDeparture?: boolean,
+    ) =>
+      ["attendance", "register", timestamp, status ?? null, Boolean(isLate), Boolean(isEarlyDeparture)] as const,
   },
   liveAttendance: {
     today: () => ["live-attendance", "today"] as const,

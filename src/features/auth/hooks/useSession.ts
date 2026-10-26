@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { fetchDepartments } from "@/features/departments/store/departmentsSlice";
 import { fetchDesignations } from "@/features/designations/store/designationsSlice";
+import { fetchShifts } from "@/features/shifts/store/shiftsSlice";
 import { ROUTES } from "@/shared/config/routes";
 import { saveAuthToken } from "@/shared/lib/auth-token";
 import { useAppDispatch, useAppSelector } from "@/shared/store/hooks";
@@ -43,6 +44,7 @@ export function useSignIn() {
       dispatch(addUser(user));
       dispatch(fetchDepartments());
       dispatch(fetchDesignations());
+      dispatch(fetchShifts());
       router.push(ROUTES.dashboard);
     },
   });

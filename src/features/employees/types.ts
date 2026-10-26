@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-export const SHIFTS = ["General — 09:00 to 17:00"] as const;
-
 export const EMPLOYMENT_STATUSES = [
   "Active",
   "Probation",
@@ -21,6 +19,7 @@ export const employeeSchema = z.object({
   department: z.string(),
   departmentId: z.number().nullable(),
   shift: z.string(),
+  shiftId: z.number().nullable(),
   employmentStatus: z.string(),
   email: z.string(),
   phone: z.string(),
@@ -58,7 +57,7 @@ export const employeeInputSchema = z.object({
   departmentId: z.coerce.number().positive("Department is required"),
   designationId: z.coerce.number().positive("Designation is required"),
   designation: z.string().optional().default(""),
-  shift: z.enum(SHIFTS),
+  shiftId: z.coerce.number().positive("Shift is required"),
   joiningDate: z.string().optional().default(""),
   reportingManager: z.string().optional().default(""),
   employmentStatus: z.enum(EMPLOYMENT_STATUSES),
@@ -135,11 +134,10 @@ export interface RealEmployeeRecord {
 
 /**
  * Adapts a backend employee record onto the shape the rest of this
- * app's UI renders. There's
- * no department/shift NAME lookup wired up for shift yet, so that still
- * shows as a "Shift #<id>" placeholder rather than a real name; department
- * and designation now resolve to real names via their Redux slices where
- * the form renders them (this adapter itself has no store access).
+ * app's UI renders. The display string stays "Shift #<id>" because this
+ * adapter has no store access. The form reads `shiftId` and resolves the
+ * name from the shifts slice, the same way it resolves department and
+ * designation names.
  */
 /** A blank last name is shown and stored as a dash. */
 export function lastNameOrDash(lastName: string | null | undefined): string {
@@ -169,6 +167,7 @@ export function toEmployee(record: RealEmployeeRecord): Employee {
       record.department_id != null ? `Dept #${record.department_id}` : "",
     departmentId: record.department_id ?? null,
     shift: record.shift_id != null ? `Shift #${record.shift_id}` : "",
+    shiftId: record.shift_id ?? null,
     employmentStatus: record.employment_status ?? (record.is_active ? "active" : "inactive"),
     email: record.email ?? "",
     phone: record.phone ?? "",
@@ -206,7 +205,7 @@ export const EMPTY_EMPLOYEE: EmployeeInput = {
   departmentId: 0,
   designationId: 0,
   designation: "",
-  shift: "General — 09:00 to 17:00",
+  shiftId: 0,
   joiningDate: "",
   reportingManager: "",
   employmentStatus: "Active",

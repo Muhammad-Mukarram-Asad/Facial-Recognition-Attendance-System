@@ -40,3 +40,7 @@ export function startOfToday(): Date {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
+
+// export const AttendanceStatus = z.enum(["present", "absent", "leave", "blacklisted", "pending", "incomplete"]);
+export const AttendanceStatus = z.enum(["present", "absent", "late", "early"]);
+export type AttendanceStatus = z.infer<typeof AttendanceStatus>;

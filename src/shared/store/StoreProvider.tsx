@@ -13,6 +13,7 @@ import { ROUTES } from '@/shared/config/routes';
 import { useAppDispatch } from '@/shared/store/hooks';
 import { fetchDepartments } from '@/features/departments/store/departmentsSlice';
 import { fetchDesignations } from '@/features/designations/store/designationsSlice';
+import { fetchShifts } from '@/features/shifts/store/shiftsSlice';
 
 import { makeStore } from './store';
 
@@ -20,8 +21,8 @@ import { makeStore } from './store';
  * Bootstraps session data on load. A still-valid 1-hour session is restored
  * from the cache first, then fetchCurrentUser revalidates it. A network
  * blip keeps that cache; an expired or invalid token signs the user out.
- * Once a session is confirmed, fetchDepartments/fetchDesignations follow —
- * both require auth, and only need fetching once per session (a fresh
+ * Once a session is confirmed, departments, designations, and shifts follow.
+ * All three require auth and only need fetching once per session (a fresh
  * sign-in triggers them too, from useSignIn; their own `condition` guards
  * keep either path from double-fetching).
  */
@@ -58,6 +59,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (fetchCurrentUser.fulfilled.match(action)) {
         store.dispatch(fetchDepartments());
         store.dispatch(fetchDesignations());
+        store.dispatch(fetchShifts());
       }
     });
   }, [store]);
