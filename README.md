@@ -6,9 +6,10 @@ reviewing attendance history, and exporting reports.
 
 ## ✨ Purpose
 
-- 📊 **Dashboard** — live presence, punctuality trends, and hourly check-in activity at a glance.
-- 🧾 **Attendance records** — searchable, filterable daily logs with bulk actions.
-- 👥 **Employee management** — roster, profiles, and face enrollment.
+- 📊 **Dashboard** — one day's attendance analytics (present, absent, late, strangers, blacklisted, enrolled faces), a live gate feed, and the newest check-ins.
+- 🧾 **Attendance records** — one day's register, searchable, and filterable by present, absent, late, or early departure.
+- 👥 **Employee management** — roster, profiles, face-photo enrollment, and designation and shift chosen from the backend.
+- 🔐 **Session** — a sign-in lasts one hour. Expiry, or a rejected token, signs the console out and returns to sign-in.
 - 🌗 **Light / dark themes** — instant, flash-free theme switching.
 - 📱 **Responsive** — real component swaps (not just CSS) below 900px.
 
@@ -42,15 +43,15 @@ Run the dev server:
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and sign in with an
+Open [http://localhost:3001](http://localhost:3001) and sign in with an
 account issued by the FaceTrack backend.
 
 ## 📜 Scripts
 
 ```bash
-npm run dev       # start the dev server
+npm run dev       # dev server on port 3001
 npm run build     # production build
-npm start         # run the production build
+npm start         # production server on port 3001
 npm run lint      # lint the codebase
 ```
 
@@ -76,7 +77,7 @@ src/
 ├── features/                   one folder per domain
 │   ├── auth/         attendance/   dashboard/
 │   ├── employees/    departments/  designations/
-│   ├── profile/      shell/
+│   ├── profile/      shell/        shifts/
 │   │
 │   └── <feature>/
 │       ├── types.ts            zod schemas + inferred types (the contract)
@@ -113,6 +114,17 @@ Every server read and write goes through TanStack Query.
   (adding, removing employees)
 - Loading and error states are real: skeletons while pending, retry affordance on
   failure, `placeholderData` so filtering never blanks a table.
+
+## 🔌 What the console calls
+
+These are the integrations added after the console moved off dummy data.
+
+- **Dashboard analytics** — `GET /attendance/analytics-today` for the picked calendar day. The timestamp is noon in Asia/Karachi, so the numbers stay on the day the user chose.
+- **Live gate feed** — `GET /attendance/events` loads the last 24 hours, then `GET /attendance/stream` appends new frames. The stream client is `EventSourcePolyfill` so the request can carry the Authorization header. Events older than 24 hours drop off. Unknown people arrive with employee id `0` and each capture stays its own row. Gate photos are prefixed with the server-assets base.
+- **Attendance register** — `GET /attendance/attendance-full` for one day. Present and absent filter on `status`. Late and early departure also send `is_late` and `is_early_departure`. Search runs on the loaded rows.
+- **Employees** — create sends the profile and a face photo together. Edit updates the profile. The enrollment photo is sent only on create. Stored photo keys are prefixed with the server-assets base so the browser can load them.
+- **Designations and shifts** — loaded once a session exists, then used as the pickers on the employee form. Job title follows the chosen designation.
+- **Session** — the token cookie and a saved profile last one hour from sign-in. Reloads do not extend that deadline. When it passes, including after a backgrounded tab comes forward, the console signs out. Parallel 401s navigate to sign-in once.
 
 ## 🎨 Design system
 
