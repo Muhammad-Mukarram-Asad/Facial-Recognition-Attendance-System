@@ -18,9 +18,6 @@ const SERVER_ASSETS_URL = process.env.NEXT_PUBLIC_SERVER_ASSETS?.replace(/\/$/, 
 export function streamPhotoUrl(imagePath: string | null): string | null {
   if (!imagePath || !SERVER_ASSETS_URL) return null;
   if (/^https?:\/\//i.test(imagePath)) return imagePath;
-  console.log("imagePath", imagePath);
-  console.log("SERVER_ASSETS_URL", SERVER_ASSETS_URL);
-  console.log(`${SERVER_ASSETS_URL}/${imagePath.replace(/^\//, '')}`);
   return `${SERVER_ASSETS_URL}/${imagePath.replace(/^\//, '')}`;
 }
 

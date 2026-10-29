@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { Avatar, Card, CardHeader, EmptyState, SkeletonRows } from '@/shared/ui';
 import { formatClock } from '@/shared/lib/format';
@@ -9,6 +9,7 @@ import { streamPhotoUrl } from '../api/attendance-stream.api';
 import { useAttendanceStreamStatus } from '../hooks/useAttendanceStream';
 import { useLiveAttendanceEvents } from '../hooks/useLiveAttendanceEvents';
 import { streamEventKey, type AttendanceStreamEvent } from '../types';
+import { EmployeePhotoModal, previewFromStreamEvent, type EmployeePhotoPreview } from './EmployeePhotoModal';
 
 /**
  * Rolling last-24h feed. GET /api/v1/attendance/events fills the window on
@@ -18,6 +19,8 @@ import { streamEventKey, type AttendanceStreamEvent } from '../types';
 export function LiveStreamCard() {
   const { isConnected } = useAttendanceStreamStatus();
   const { events: data, isPending } = useLiveAttendanceEvents();
+  const [preview, setPreview] = useState<EmployeePhotoPreview | null>(null);
+  const closePreview = useCallback(() => setPreview(null), []);
 
   return (
     <Card style={{ flex: '1 1 330px', gap: 12 }}>
@@ -73,7 +76,7 @@ export function LiveStreamCard() {
               }}
             >
               <span style={{ position: 'relative', flex: 'none' }}>
-                <GatePhoto event={event} />
+                <GatePhoto event={event} onOpen={(next) => setPreview(previewFromStreamEvent(next))} />
                 <span
                   aria-hidden
                   style={{
@@ -136,26 +139,47 @@ export function LiveStreamCard() {
           ))}
         </div>
       )}
+      {preview ? <EmployeePhotoModal preview={preview} onClose={closePreview} /> : null}
     </Card>
   );
 }
 
-function GatePhoto({ event }: { event: AttendanceStreamEvent }) {
+function GatePhoto({
+  event,
+  onOpen,
+}: {
+  event: AttendanceStreamEvent;
+  onOpen: (event: AttendanceStreamEvent) => void;
+}) {
   const [failed, setFailed] = useState(false);
   const src = streamPhotoUrl(event.image_path);
-  console.log("src", src);
   const name = event.employee_name || `Employee ${event.employee_id}`;
 
   if (!src || failed) return <Avatar name={name} size={36} />;
 
   return (
-    <img
-      src={src}
-      alt="image of employee"
-      width={36}
-      height={36}
-      onError={() => setFailed(true)}
-      style={{ width: 36, height: 36, borderRadius: 11, objectFit: 'cover', display: 'block' }}
-    />
+    <button
+      type="button"
+      onClick={() => onOpen(event)}
+      aria-label={`View photo of ${name}`}
+      style={{
+        padding: 0,
+        border: 0,
+        background: 'transparent',
+        borderRadius: 11,
+        cursor: 'zoom-in',
+        display: 'block',
+        lineHeight: 0,
+      }}
+    >
+      <img
+        src={src}
+        alt=""
+        width={50}
+        height={50}
+        onError={() => setFailed(true)}
+        style={{ width: 50, height: 50, borderRadius: 11, objectFit: 'cover', display: 'block' }}
+      />
+    </button>
   );
 }

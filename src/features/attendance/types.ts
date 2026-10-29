@@ -20,6 +20,11 @@ export const attendanceRegisterSchema = z.object({
         status: z.string(),
         is_late: z.boolean(),
         is_early_departure: z.boolean(),
+        image_path: z
+          .string()
+          .nullable()
+          .optional()
+          .transform((value) => (value && value.length > 0 ? value : null)),
       }),
     ),
   }),

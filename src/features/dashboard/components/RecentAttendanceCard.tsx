@@ -1,43 +1,38 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 
 import { ROUTES } from '@/shared/config/routes';
-import { useIsDesktop } from '@/shared/hooks/useMediaQuery';
+import { useIsDesktop, useMediaQuery } from '@/shared/hooks/useMediaQuery';
 import { formatClock } from '@/shared/lib/format';
 import { Avatar, Card, CardHeader, EmptyState, Skeleton } from '@/shared/ui';
 
 import { streamPhotoUrl } from '../api/attendance-stream.api';
 import { useLiveAttendanceEvents } from '../hooks/useLiveAttendanceEvents';
+import { eventLabel, gateLabel } from '../lib/event-label';
 import { streamEventKey, type AttendanceStreamEvent } from '../types';
+import { EmployeePhotoModal, previewFromStreamEvent, type EmployeePhotoPreview } from './EmployeePhotoModal';
 
-const RECENT_LIMIT = 6;
-const PHOTO_SIZE = 96;
-
-/** "gate_01" → "Gate 01". A location without a number is shown as written. */
-function gateLabel(location: string): string {
-  const trimmed = location.trim();
-  if (!trimmed) return 'Gate —';
-  const digits = trimmed.match(/(\d+)/);
-  if (!digits) return trimmed.replace(/_/g, ' ');
-  return `Gate ${digits[1]}`;
-}
-
-function eventLabel(eventType: string): string {
-  const trimmed = eventType.trim();
-  if (!trimmed) return 'Event';
-  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
-}
+const DESKTOP_LIMIT = 12;
+const COMPACT_LIMIT = 9;
 
 /**
- * The six newest gate events, two per row, so HR can read them larger than
- * the scrolling live feed. "View all" opens the attendance records page.
+ * Newest gate events as a photo grid. Laptops and desktops show up to 12
+ * across four columns. Narrower screens show up to 9, in three columns once
+ * each face still has room, otherwise two, so the capture stays recognizable.
+ * "View all" opens the attendance records page.
  */
 export function RecentAttendanceCard() {
   const isDesktop = useIsDesktop();
+  const isThreeUp = useMediaQuery('(min-width: 560px)');
   const { events, isPending } = useLiveAttendanceEvents();
-  const recent = events.slice(0, RECENT_LIMIT);
+  const [preview, setPreview] = useState<EmployeePhotoPreview | null>(null);
+  const closePreview = useCallback(() => setPreview(null), []);
+
+  const limit = isDesktop ? DESKTOP_LIMIT : COMPACT_LIMIT;
+  const columns = isDesktop ? 4 : isThreeUp ? 3 : 2;
+  const recent = events.slice(0, limit);
 
   return (
     <Card style={{ gap: 14 }}>
@@ -51,25 +46,47 @@ export function RecentAttendanceCard() {
       />
 
       {isPending ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-          {Array.from({ length: RECENT_LIMIT }, (_, index) => (
-            <Skeleton key={index} height={120} radius={14} />
+        <RecentGrid columns={columns}>
+          {Array.from({ length: limit }, (_, index) => (
+            <Skeleton key={index} height={220} radius={14} />
           ))}
-        </div>
+        </RecentGrid>
       ) : recent.length === 0 ? (
         <EmptyState message="No recent attendance yet" icon="scan-face" />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+        <RecentGrid columns={columns}>
           {recent.map((event) => (
-            <RecentEvent key={streamEventKey(event)} event={event} stacked={!isDesktop} />
+            <RecentEvent key={streamEventKey(event)} event={event} onOpen={(next) => setPreview(previewFromStreamEvent(next))} />
           ))}
-        </div>
+        </RecentGrid>
       )}
+
+      {preview ? <EmployeePhotoModal preview={preview} onClose={closePreview} /> : null}
     </Card>
   );
 }
 
-function RecentEvent({ event, stacked }: { event: AttendanceStreamEvent; stacked: boolean }) {
+function RecentGrid({ columns, children }: { columns: number; children: ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+        gap: 12,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function RecentEvent({
+  event,
+  onOpen,
+}: {
+  event: AttendanceStreamEvent;
+  onOpen: (event: AttendanceStreamEvent) => void;
+}) {
   const name = event.employee_name || `Employee #${event.employee_id}`;
   const isExit = event.event_type === 'exit';
 
@@ -77,20 +94,18 @@ function RecentEvent({ event, stacked }: { event: AttendanceStreamEvent; stacked
     <div
       style={{
         display: 'flex',
-        flexDirection: stacked ? 'column' : 'row',
-        alignItems: stacked ? 'stretch' : 'center',
-        gap: stacked ? 10 : 14,
+        flexDirection: 'column',
         minWidth: 0,
-        padding: stacked ? 10 : 12,
         borderRadius: 14,
         background: 'var(--surface-subtle)',
+        overflow: 'hidden',
       }}
     >
-      <GatePhoto event={event} name={name} stacked={stacked} />
-      <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <GatePhoto event={event} name={name} onOpen={() => onOpen(event)} />
+      <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3, padding: '10px 12px 12px' }}>
         <span
           style={{
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: 700,
             color: 'var(--text-strong)',
             whiteSpace: 'nowrap',
@@ -102,14 +117,24 @@ function RecentEvent({ event, stacked }: { event: AttendanceStreamEvent; stacked
         </span>
         <span
           style={{
-            fontSize: 13,
+            fontSize: 12.5,
             fontWeight: 700,
             color: isExit ? 'var(--warning)' : 'var(--success)',
           }}
         >
           {eventLabel(event.event_type)}
         </span>
-        <span style={{ fontSize: 13, color: 'var(--text-body)' }}>{gateLabel(event.location)}</span>
+        <span
+          style={{
+            fontSize: 12.5,
+            color: 'var(--text-body)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {gateLabel(event.location)}
+        </span>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-faint)' }}>
           {formatClock(new Date(event.timestamp))}
         </span>
@@ -121,41 +146,67 @@ function RecentEvent({ event, stacked }: { event: AttendanceStreamEvent; stacked
 function GatePhoto({
   event,
   name,
-  stacked,
+  onOpen,
 }: {
   event: AttendanceStreamEvent;
   name: string;
-  stacked: boolean;
+  onOpen: () => void;
 }) {
   const [failed, setFailed] = useState(false);
   const src = streamPhotoUrl(event.image_path);
-  const size = stacked ? 112 : PHOTO_SIZE;
-
-  if (!src || failed) {
-    return (
-      <Avatar
-        name={name}
-        size={size}
-        radius={16}
-      />
-    );
-  }
+  const canOpen = Boolean(src) && !failed;
 
   return (
-    <img
-      src={src}
-      alt=""
-      width={size}
-      height={size}
-      onError={() => setFailed(true)}
+    <div
       style={{
-        width: stacked ? '100%' : size,
-        height: size,
-        flex: 'none',
-        borderRadius: 16,
-        objectFit: 'cover',
-        display: 'block',
+        position: 'relative',
+        width: '100%',
+        aspectRatio: '1 / 1',
+        background: 'var(--surface-sunken)',
+        overflow: 'hidden',
       }}
-    />
+    >
+      {canOpen ? (
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={`View photo of ${name}`}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            padding: 0,
+            border: 0,
+            background: 'transparent',
+            cursor: 'zoom-in',
+            display: 'block',
+          }}
+        >
+          <img
+            src={src ?? undefined}
+            alt=""
+            onError={() => setFailed(true)}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center 18%',
+              display: 'block',
+            }}
+          />
+        </button>
+      ) : (
+        <span
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Avatar name={name} size={72} radius={18} />
+        </span>
+      )}
+    </div>
   );
 }

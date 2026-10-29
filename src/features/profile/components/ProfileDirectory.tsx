@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { employeePhotoUrl } from "@/features/employees/api/employees.api";
 import { useAllEmployees } from "@/features/employees/hooks/useEmployees";
 import type { Employee } from "@/features/employees/types";
 import { ROUTES } from "@/shared/config/routes";
@@ -165,7 +166,7 @@ export function ProfileDirectory() {
                 cursor: "pointer",
               }}
             >
-              <Avatar name={employee.name} size={38} brackets />
+              <EmployeePhoto name={employee.name} photoPath={employee.photoPath} />
               <span
                 style={{
                   flex: 1,
@@ -260,5 +261,34 @@ export function ProfileDirectory() {
         </div>
       )}
     </Card>
+  );
+}
+
+const PHOTO_SIZE = 50;
+
+/** Enrollment photo from `photo_path`. Initials when the database has none, or the file fails to load. */
+function EmployeePhoto({ name, photoPath }: { name: string; photoPath: string | null }) {
+  const [failedPath, setFailedPath] = useState<string | null>(null);
+  const src = employeePhotoUrl(photoPath);
+  const failed = photoPath != null && failedPath === photoPath;
+
+  if (!src || failed) return <Avatar name={name} size={PHOTO_SIZE} brackets />;
+
+  return (
+    <img
+      src={src}
+      alt=""
+      width={PHOTO_SIZE}
+      height={PHOTO_SIZE}
+      onError={() => setFailedPath(photoPath)}
+      style={{
+        width: PHOTO_SIZE,
+        height: PHOTO_SIZE,
+        flex: "none",
+        borderRadius: 11,
+        objectFit: "cover",
+        display: "block",
+      }}
+    />
   );
 }

@@ -1,9 +1,15 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { DateRangeFilter } from "@/features/dashboard/components/DateRangeFilter";
-import { orDash } from "@/shared/lib/format";
+import {
+  EmployeePhotoModal,
+  type EmployeePhotoPreview,
+} from "@/features/dashboard/components/EmployeePhotoModal";
+import { streamPhotoUrl } from "@/features/dashboard/api/attendance-stream.api";
+import { useAllEmployees } from "@/features/employees/hooks/useEmployees";
+import { formatDate, orDash } from "@/shared/lib/format";
 import { useIsDesktop } from "@/shared/hooks/useMediaQuery";
 import { Avatar, Badge, Button, Card, EmptyState, Icon, SegmentedControl, SkeletonRows } from "@/shared/ui";
 import type { Tone } from "@/shared/types";
@@ -94,6 +100,9 @@ export function AttendanceView() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [page, setPage] = useState(1);
   const [windowStart, setWindowStart] = useState(1);
+  const [preview, setPreview] = useState<EmployeePhotoPreview | null>(null);
+  const closePreview = useCallback(() => setPreview(null), []);
+  const roster = useAllEmployees();
   const timestamp = toRegisterTimestamp(date);
   const register = useAttendanceRegister(filterToQuery(timestamp, statusFilter));
 
@@ -112,6 +121,36 @@ export function AttendanceView() {
     [register.data],
   );
   const records = snapshot?.records ?? [];
+  const enrollmentPhotos = useMemo(() => {
+    const photos = new Map<number, string>();
+    for (const employee of roster.data?.items ?? []) {
+      const id = Number(employee.id);
+      if (Number.isFinite(id) && employee.photoPath) photos.set(id, employee.photoPath);
+    }
+    return photos;
+  }, [roster.data]);
+  const imageFor = useCallback(
+    (record: AttendanceRecord) => record.image_path ?? enrollmentPhotos.get(record.employee_id) ?? null,
+    [enrollmentPhotos],
+  );
+  const openPhoto = useCallback(
+    (record: AttendanceRecord) => {
+      const imagePath = record.image_path ?? enrollmentPhotos.get(record.employee_id) ?? null;
+      if (!imagePath) return;
+      const checkIn = formatRecordTime(record.check_in);
+      const dayLabel = formatDate(date);
+      const flagged = record.status === "absent" || record.is_late || record.is_early_departure;
+      setPreview({
+        name: record.name,
+        imagePath,
+        headline: statusLabel(record.status),
+        context: record.department?.trim() || "",
+        whenLabel: checkIn === "—" ? dayLabel : `${dayLabel} · ${checkIn}`,
+        tone: flagged ? "warning" : "success",
+      });
+    },
+    [date, enrollmentPhotos],
+  );
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return records.filter((record) => {
@@ -225,7 +264,11 @@ export function AttendanceView() {
         </Card>
       ) : (
         <>
-          {isDesktop ? <RecordTable records={pageRecords} /> : <RecordCards records={pageRecords} />}
+          {isDesktop ? (
+            <RecordTable records={pageRecords} imageFor={imageFor} onOpen={openPhoto} />
+          ) : (
+            <RecordCards records={pageRecords} imageFor={imageFor} onOpen={openPhoto} />
+          )}
           <RecordPagination
             page={currentPage}
             pageCount={pageCount}
@@ -237,6 +280,7 @@ export function AttendanceView() {
           />
         </>
       )}
+      {preview ? <EmployeePhotoModal preview={preview} onClose={closePreview} /> : null}
     </div>
   );
 }
@@ -313,7 +357,15 @@ function RecordPagination({
   );
 }
 
-function RecordTable({ records }: { records: AttendanceRecord[] }) {
+function RecordTable({
+  records,
+  imageFor,
+  onOpen,
+}: {
+  records: AttendanceRecord[];
+  imageFor: (record: AttendanceRecord) => string | null;
+  onOpen: (record: AttendanceRecord) => void;
+}) {
   return (
     <Card padding={0} style={{ overflow: "hidden" }}>
       <div style={{ overflowX: "auto" }}>
@@ -357,7 +409,12 @@ function RecordTable({ records }: { records: AttendanceRecord[] }) {
             }}
           >
             <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-              <Avatar name={record.name} size={32} />
+              <RecordPhoto
+                name={record.name}
+                imagePath={imageFor(record)}
+                size={40}
+                onOpen={() => onOpen(record)}
+              />
               <span
                 style={{
                   fontSize: 14,
@@ -389,13 +446,26 @@ function RecordTable({ records }: { records: AttendanceRecord[] }) {
   );
 }
 
-function RecordCards({ records }: { records: AttendanceRecord[] }) {
+function RecordCards({
+  records,
+  imageFor,
+  onOpen,
+}: {
+  records: AttendanceRecord[];
+  imageFor: (record: AttendanceRecord) => string | null;
+  onOpen: (record: AttendanceRecord) => void;
+}) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {records.map((record, index) => (
         <Card key={`${record.employee_id}-${index}`} padding="14px 16px" style={{ gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Avatar name={record.name} size={36} />
+            <RecordPhoto
+              name={record.name}
+              imagePath={imageFor(record)}
+              size={44}
+              onOpen={() => onOpen(record)}
+            />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--text-strong)" }}>{record.name}</div>
               <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-faint)" }}>
@@ -416,6 +486,51 @@ function RecordCards({ records }: { records: AttendanceRecord[] }) {
         </Card>
       ))}
     </div>
+  );
+}
+
+function RecordPhoto({
+  name,
+  imagePath,
+  size,
+  onOpen,
+}: {
+  name: string;
+  imagePath: string | null;
+  size: number;
+  onOpen: () => void;
+}) {
+  const [failedPath, setFailedPath] = useState<string | null>(null);
+  const src = streamPhotoUrl(imagePath);
+  const failed = imagePath != null && failedPath === imagePath;
+
+  if (!src || failed) return <Avatar name={name} size={size} />;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`View photo of ${name}`}
+      style={{
+        padding: 0,
+        border: 0,
+        background: "transparent",
+        borderRadius: 11,
+        cursor: "zoom-in",
+        display: "block",
+        lineHeight: 0,
+        flex: "none",
+      }}
+    >
+      <img
+        src={src}
+        alt=""
+        width={size}
+        height={size}
+        onError={() => setFailedPath(imagePath)}
+        style={{ width: size, height: size, borderRadius: 11, objectFit: "cover", display: "block" }}
+      />
+    </button>
   );
 }
 
