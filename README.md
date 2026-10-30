@@ -6,9 +6,9 @@ reviewing attendance history, and exporting reports.
 
 ## ✨ Purpose
 
-- 📊 **Dashboard** — one day's attendance analytics (present, absent, late, strangers, blacklisted, enrolled faces), a live gate feed, and the newest check-ins.
-- 🧾 **Attendance records** — one day's register, searchable, and filterable by present, absent, late, or early departure.
-- 👥 **Employee management** — roster, profiles, face-photo enrollment, and designation and shift chosen from the backend.
+- 📊 **Dashboard** — one day's attendance analytics (present, absent, late, strangers, blacklisted, enrolled faces), a live gate feed, and the newest check-ins. A gate photo opens in a dialog in the center of the screen.
+- 🧾 **Attendance records** — one day's register, searchable, and filterable by present, absent, late, or early departure. Each row shows the employee's photo; clicking it opens the same dialog.
+- 👥 **Employee management** — roster, profiles, face-photo enrollment, and designation and shift chosen from the backend. The directory shows the stored enrollment photo, and initials when none is stored.
 - 🔐 **Session** — a sign-in lasts one hour. Expiry, or a rejected token, signs the console out and returns to sign-in.
 - 🌗 **Light / dark themes** — instant, flash-free theme switching.
 - 📱 **Responsive** — real component swaps (not just CSS) below 900px.
@@ -120,9 +120,9 @@ Every server read and write goes through TanStack Query.
 These are the integrations added after the console moved off dummy data.
 
 - **Dashboard analytics** — `GET /attendance/analytics-today` for the picked calendar day. The timestamp is noon in Asia/Karachi, so the numbers stay on the day the user chose.
-- **Live gate feed** — `GET /attendance/events` loads the last 24 hours, then `GET /attendance/stream` appends new frames. The stream client is `EventSourcePolyfill` so the request can carry the Authorization header. Events older than 24 hours drop off. Unknown people arrive with employee id `0` and each capture stays its own row. Gate photos are prefixed with the server-assets base.
-- **Attendance register** — `GET /attendance/attendance-full` for one day. Present and absent filter on `status`. Late and early departure also send `is_late` and `is_early_departure`. Search runs on the loaded rows.
-- **Employees** — create sends the profile and a face photo together. Edit updates the profile. The enrollment photo is sent only on create. Stored photo keys are prefixed with the server-assets base so the browser can load them.
+- **Live gate feed** — `GET /attendance/events` loads the last 24 hours, then `GET /attendance/stream` appends new frames. The stream client is `EventSourcePolyfill` so the request can carry the Authorization header. Events older than 24 hours drop off. Unknown people arrive with employee id `0` and each capture stays its own row. Gate photos are prefixed with the server-assets base. Clicking a thumbnail opens a dialog with the full capture, name, entry or exit, gate, and time. The recent card shows the 12 newest events in four columns on a laptop or desktop (viewport at least 901px). Narrower screens show the 9 newest: three columns from 560px, two below that, so each face stays recognizable. Those photos open the same dialog.
+- **Attendance register** — `GET /attendance/attendance-full` for one day. Present and absent filter on `status`. Late and early departure also send `is_late` and `is_early_departure`. Search runs on the loaded rows. Each record includes `image_path`: the day's first entry capture, or the employee's enrollment photo when that capture is missing. The row shows that image beside the name. If the register has no path, the console uses the roster `photo_path`. Clicking the photo opens the same dialog, with status, department, and check-in time. Initials stay when neither image exists or the file fails to load.
+- **Employees** — create sends the profile and a face photo together. Edit updates the profile. The enrollment photo is sent only on create. Stored photo keys are prefixed with the server-assets base so the browser can load them. The employee directory renders `photo_path` in place of the initials avatar, and keeps the initials when the path is empty or the image fails.
 - **Designations and shifts** — loaded once a session exists, then used as the pickers on the employee form. Job title follows the chosen designation.
 - **Session** — the token cookie and a saved profile last one hour from sign-in. Reloads do not extend that deadline. When it passes, including after a backgrounded tab comes forward, the console signs out. Parallel 401s navigate to sign-in once.
 
