@@ -7,6 +7,16 @@ export const EMPLOYMENT_STATUSES = [
   "Suspended",
 ] as const;
 
+/** PUT /api/v1/employees/{id}/status/{status_slug} */
+export const EMPLOYEE_STATUS_SLUGS = [
+  "active",
+  "inactive",
+  "on-leave",
+  "blacklisted",
+] as const;
+
+export type EmployeeStatusSlug = (typeof EMPLOYEE_STATUS_SLUGS)[number];
+
 export const employeeSchema = z.object({
   id: z.string(),
   employeeCode: z.string(),

@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/shared/api/query-keys";
 
 import { employeesApi } from "../api/employees.api";
-import type { EmployeeQuery, EmployeeWritePayload } from "../types";
+import type { EmployeeQuery, EmployeeStatusSlug, EmployeeWritePayload } from "../types";
 
 export function useEmployees(query: EmployeeQuery = {}) {
   return useQuery({
@@ -17,7 +17,7 @@ export function useEmployees(query: EmployeeQuery = {}) {
 /**
  * Full roster for the employees screen. Search filters a copy of `items`
  * and does not refetch. Opening the screen again loads the latest list.
- * Create, update, and delete also invalidate this cache.
+ * Create, update, status changes, and delete also invalidate this cache.
  */
 export function useAllEmployees() {
   return useQuery({
@@ -72,6 +72,18 @@ export function useUpdateEmployee() {
       id: number;
       input: EmployeeWritePayload;
     }) => employeesApi.update(id, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.employees.all() });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useSetEmployeeStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: EmployeeStatusSlug }) =>
+      employeesApi.setStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.employees.all() });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });

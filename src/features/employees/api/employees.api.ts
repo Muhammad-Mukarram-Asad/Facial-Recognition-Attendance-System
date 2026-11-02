@@ -5,6 +5,7 @@ import {
   type Employee,
   type EmployeeList,
   type EmployeeQuery,
+  type EmployeeStatusSlug,
   type EmployeeWritePayload,
   type RealEmployeeRecord,
 } from "../types";
@@ -112,6 +113,19 @@ export const employeesApi = {
       { ...input, id },
     );
     return toEmployee(data.data);
+  },
+
+  /**
+   * PUT /api/v1/employees/{employee_id}/status/{status_slug}
+   * Slugs: active, inactive, on-leave, blacklisted. Updates
+   * employment_status and is_active. Requires employee.update.
+   */
+  setStatus: async (id: string, status: EmployeeStatusSlug): Promise<void> => {
+    const recordId = Number(id);
+    if (!Number.isInteger(recordId) || recordId < 1) {
+      throw new Error("Employee id must be an integer");
+    }
+    await apiClient.put(`${EMPLOYEES_API_URL}/${recordId}/status/${status}`);
   },
 
   // DELETE /api/v1/employees/{id} — `id` is the integer primary key.

@@ -19,6 +19,7 @@ import { useShifts } from "@/features/shifts/hooks/useShifts";
 import {
   useCreateEmployee,
   useDeleteEmployee,
+  useSetEmployeeStatus,
   useUpdateEmployee,
 } from "../hooks/useEmployees";
 import {
@@ -175,7 +176,12 @@ export function EmployeeForm({
   const isEdit = Boolean(employee);
   const create = useCreateEmployee();
   const update = useUpdateEmployee();
+  const setStatus = useSetEmployeeStatus();
   const remove = useDeleteEmployee();
+  const [markedBlacklisted, setMarkedBlacklisted] = useState(false);
+  const isBlacklisted =
+    markedBlacklisted ||
+    employee?.employmentStatus.trim().toLowerCase() === "blacklisted";
   const departments = useDepartments();
   const designations = useDesignations();
   const shifts = useShifts();
@@ -267,6 +273,40 @@ export function EmployeeForm({
         },
       },
     );
+  };
+
+  const handleBlacklist = () => {
+    if (!employee || isBlacklisted) return;
+    toast.warning(`Blacklist ${employee.name}?`, {
+      id: `blacklist-employee-${employee.id}`,
+      description: "Their status will be set to blacklisted.",
+      duration: Infinity,
+      actionButtonStyle: {
+        background: "var(--priority-high)",
+        color: "#fff",
+      },
+      action: {
+        label: "Blacklist",
+        onClick: () => {
+          setStatus.mutate(
+            { id: employee.id, status: "blacklisted" },
+            {
+              onSuccess: () => {
+                setMarkedBlacklisted(true);
+                toast.success(`${employee.name} blacklisted`);
+              },
+              onError: (error) => {
+                toast.error(toApiError(error).message);
+              },
+            },
+          );
+        },
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => {},
+      },
+    });
   };
 
   const handleDelete = () => {
@@ -618,10 +658,21 @@ export function EmployeeForm({
               <span style={{ flex: 1, minWidth: 0 }} />
               <Button
                 type="button"
+                variant="secondary"
+                icon="ban"
+                onClick={handleBlacklist}
+                loading={setStatus.isPending}
+                disabled={isBlacklisted || remove.isPending}
+              >
+                {isBlacklisted ? "Blacklisted" : "Blacklist employee"}
+              </Button>
+              <Button
+                type="button"
                 variant="danger"
                 icon="trash"
                 onClick={handleDelete}
                 loading={remove.isPending}
+                disabled={setStatus.isPending}
               >
                 Delete employee
               </Button>

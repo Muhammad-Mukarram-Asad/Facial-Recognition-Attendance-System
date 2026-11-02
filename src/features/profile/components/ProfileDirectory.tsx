@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { useDepartments } from "@/features/departments/hooks/useDepartments";
+import type { Department } from "@/features/departments/types";
 import { employeePhotoUrl } from "@/features/employees/api/employees.api";
 import { useAllEmployees } from "@/features/employees/hooks/useEmployees";
 import type { Employee } from "@/features/employees/types";
@@ -27,9 +29,7 @@ const LIST_MAX_HEIGHT = 480;
 
 const MAX_PAGE_BUTTONS = 5;
 
-/** A sliding window of up to 5 page numbers, centered on the current page
- * and clamped to the valid range — e.g. page 7 of 20 -> [5, 6, 7, 8, 9]. */
-function employeeMatches(employee: Employee, query: string): boolean {
+function employeeMatches(employee: Employee, query: string, departmentName: string): boolean {
   return [
     employee.name,
     employee.id,
@@ -38,19 +38,25 @@ function employeeMatches(employee: Employee, query: string): boolean {
     employee.phone,
     employee.cnic,
     employee.designation,
-    employee.department,
+    departmentName,
   ]
     .join(" ")
     .toLowerCase()
     .includes(query);
 }
 
+/** A sliding window of up to 5 page numbers, centered on the current page
+ * and clamped to the valid range — e.g. page 7 of 20 -> [5, 6, 7, 8, 9]. */
 function getPageWindow(current: number, total: number, size = MAX_PAGE_BUTTONS): number[] {
   if (total <= size) return Array.from({ length: total }, (_, i) => i + 1);
   let start = Math.max(1, current - Math.floor(size / 2));
   const end = Math.min(total, start + size - 1);
   start = Math.max(1, end - size + 1);
   return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+}
+
+function employeeDeptLabel(departments: Department[], departmentId: number): string {
+  return departments.find((department) => department.id === departmentId)?.name ?? "";
 }
 
 /**
@@ -61,6 +67,7 @@ function getPageWindow(current: number, total: number, size = MAX_PAGE_BUTTONS):
 export function ProfileDirectory() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const { items: departments } = useDepartments();
 
   // A new search always starts back at page 1 — adjusted during render
   // (React's recommended pattern for this) rather than in an effect, so it
@@ -77,14 +84,22 @@ export function ProfileDirectory() {
     const roster = [...(data?.items ?? [])];
     const query = search.trim().toLowerCase();
     if (!query) return roster;
-    return roster.filter((employee) => employeeMatches(employee, query));
-  }, [data?.items, search]);
+    return roster.filter((employee) =>
+      employeeMatches(
+        employee,
+        query,
+        employee.departmentId ? employeeDeptLabel(departments, employee.departmentId) : "",
+      ),
+    );
+  }, [data?.items, departments, search]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(searchChanged ? 1 : page, pageCount);
   if (!searchChanged && currentPage !== page) setPage(currentPage);
   const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const rangeStart = pageItems.length > 0 ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
   const rangeEnd = pageItems.length > 0 ? rangeStart + pageItems.length - 1 : 0;
+
+  
 
   return (
     <Card padding={22} style={{ gap: 14 }}>
@@ -145,59 +160,68 @@ export function ProfileDirectory() {
             overflowY: "auto",
           }}
         >
-          {pageItems.map((employee) => (
-            <Link
-              key={employee.id}
-              href={ROUTES.profileFor(employee.id)}
-              prefetch={false}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "11px 10px",
-                margin: "0 -10px",
-                border: "none",
-                borderBottom: "1px solid var(--border-subtle)",
-                borderRadius: 12,
-                background: "transparent",
-                color: "inherit",
-                textDecoration: "none",
-                textAlign: "left",
-                cursor: "pointer",
-              }}
-            >
-              <EmployeePhoto name={employee.name} photoPath={employee.photoPath} />
-              <span
+          {pageItems.map((employee) => {
+            const departmentName = employee.departmentId
+              ? employeeDeptLabel(departments, employee.departmentId)
+              : "";
+            return (
+              <Link
+                key={employee.id}
+                href={ROUTES.profileFor(employee.id)}
+                prefetch={false}
                 style={{
-                  flex: 1,
-                  minWidth: 0,
                   display: "flex",
-                  flexDirection: "column",
-                  gap: 2,
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "11px 10px",
+                  margin: "0 -10px",
+                  border: "none",
+                  borderBottom: "1px solid var(--border-subtle)",
+                  borderRadius: 12,
+                  background: "transparent",
+                  color: "inherit",
+                  textDecoration: "none",
+                  textAlign: "left",
+                  cursor: "pointer",
                 }}
               >
+                <EmployeePhoto name={employee.name} photoPath={employee.photoPath} />
                 <span
                   style={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "var(--text-strong)",
+                    flex: 1,
+                    minWidth: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 2,
                   }}
                 >
-                  {employee.name}
+                  <span
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "var(--text-strong)",
+                    }}
+                  >
+                    {employee.name}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 11.5,
+                      color: "var(--text-faint)",
+                    }}
+                  >
+                    {employee.employeeCode}
+                    {departmentName ? ` · ${departmentName}` : ""}
+                  </span>
                 </span>
-                <span
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 11.5,
-                    color: "var(--text-faint)",
-                  }}
-                >
-                  {employee.employeeCode} · {employee.department}
+                <span>
+                  {employee.employmentStatus === "blacklisted" ? <Icon name="ban" size={20} /> : null}
                 </span>
-              </span>
-              <RowNavIndicator />
-            </Link>
-          ))}
+                <RowNavIndicator />
+              </Link>
+            );
+          })}
         </div>
       )}
 

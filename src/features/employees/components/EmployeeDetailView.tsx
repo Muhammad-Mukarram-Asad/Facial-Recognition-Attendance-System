@@ -13,8 +13,9 @@ import { FaceEnrollmentCard } from './FaceEnrollmentCard';
 
 /**
  * Employee record screen — the same enrollment form as /employees, prefilled
- * for editing, with delete alongside it. Landed on from the employee list;
- * saving or deleting sends the admin back there with the roster refreshed.
+ * for editing, with blacklist and delete alongside it. Landed on from the
+ * employee list; saving or deleting sends the admin back there with the
+ * roster refreshed. Blacklisting stays on this page and marks the record.
  */
 export function EmployeeDetailView({ id }: { id: string }) {
   const router = useRouter();
