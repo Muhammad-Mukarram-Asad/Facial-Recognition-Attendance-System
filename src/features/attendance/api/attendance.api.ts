@@ -11,7 +11,6 @@ export type AttendanceRegisterQuery = {
   timestamp: string;
   status?: AttendanceStatus;
   is_late?: boolean;
-  is_early_departure?: boolean;
 };
 
 export const attendanceApi = {
@@ -24,7 +23,6 @@ export const attendanceApi = {
     const params: Record<string, string | boolean> = { timestamp: query.timestamp };
     if (query.status) params.status = query.status;
     if (query.is_late) params.is_late = true;
-    if (query.is_early_departure) params.is_early_departure = true;
 
     return getValidated("/attendance/attendance-full", attendanceRegisterSchema, { params }).then(
       (response) => response.data,

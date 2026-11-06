@@ -47,5 +47,5 @@ export function startOfToday(): Date {
 }
 
 // export const AttendanceStatus = z.enum(["present", "absent", "leave", "blacklisted", "pending", "incomplete"]);
-export const AttendanceStatus = z.enum(["present", "absent", "late", "early"]);
+export const AttendanceStatus = z.enum(["present", "absent", "late", "blacklisted"]);
 export type AttendanceStatus = z.infer<typeof AttendanceStatus>;

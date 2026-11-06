@@ -12,7 +12,6 @@ export function useAttendanceRegister(query: AttendanceRegisterQuery) {
       query.timestamp,
       query.status,
       query.is_late,
-      query.is_early_departure,
     ),
     queryFn: () => attendanceApi.register(query),
     placeholderData: (previous) => previous,
