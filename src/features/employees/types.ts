@@ -28,22 +28,25 @@ export const employeeSchema = z.object({
   designationId: z.number().nullable(),
   department: z.string(),
   departmentId: z.number().nullable(),
-  shift: z.string(),
-  shiftId: z.number().nullable(),
+  // shift: z.string(),
+  // shiftId: z.number().nullable(),
+  /** 24-hour HH:MM entered on the form. Empty when the record has no times. */
+  shiftStart: z.string(),
+  shiftEnd: z.string(),
   employmentStatus: z.string(),
-  email: z.string(),
   phone: z.string(),
   cnic: z.string(),
-  joiningDate: z.string(),
-  dateOfBirth: z.string(),
-  reportingManager: z.string(),
-  gateCamera: z.string(),
-  gracePeriodMinutes: z.number(),
-  weeklyOff: z.string(),
-  overtimeEligible: z.boolean(),
-  exemptFromLatePenalty: z.boolean(),
-  absenceSmsToManager: z.boolean(),
-  enrolledAngles: z.number(),
+  // email: z.string(),
+  // joiningDate: z.string(),
+  // dateOfBirth: z.string(),
+  // reportingManager: z.string(),
+  // gateCamera: z.string(),
+  // gracePeriodMinutes: z.number(),
+  // weeklyOff: z.string(),
+  // overtimeEligible: z.boolean(),
+  // exemptFromLatePenalty: z.boolean(),
+  // absenceSmsToManager: z.boolean(),
+  // enrolledAngles: z.number(),
   createdAt: z.string(),
   /** MinIO object key for the enrollment photo, or null when none is stored. */
   photoPath: z.string().nullable(),
@@ -62,21 +65,30 @@ export const employeeInputSchema = z.object({
   employeeCode: z.string().min(1, "Employee Code is required"),
   cnic: z.string().optional().default(""),
   phone: z.string().optional().default(""),
-  email: z.string().email("Enter a valid email").or(z.literal("")).default(""),
-  dateOfBirth: z.string().optional().default(""),
-  departmentId: z.coerce.number().positive("Department is required"),
-  designationId: z.coerce.number().positive("Designation is required"),
+  // email: z.string().email("Enter a valid email").or(z.literal("")).default(""),
+  // dateOfBirth: z.string().optional().default(""),
+  departmentId: z.coerce.number().min(0),
+  /** Select value: "" | "other" | department id. */
+  departmentChoice: z.string(),
+  customDepartment: z.string(),
+  designationId: z.coerce.number().min(0),
+  /** Select value: "" | "other" | designation id. */
+  designationChoice: z.string(),
+  customDesignation: z.string(),
   designation: z.string().optional().default(""),
-  shiftId: z.coerce.number().positive("Shift is required"),
-  joiningDate: z.string().optional().default(""),
-  reportingManager: z.string().optional().default(""),
+  // shiftId: z.coerce.number().min(0),
+  /** 24-hour HH:MM. */
+  shiftStart: z.string(),
+  shiftEnd: z.string(),
   employmentStatus: z.enum(EMPLOYMENT_STATUSES),
-  gracePeriodMinutes: z.coerce.number().min(0).max(120),
-  gateCamera: z.string().optional().default(""),
-  weeklyOff: z.string().optional().default(""),
-  overtimeEligible: z.boolean(),
-  exemptFromLatePenalty: z.boolean(),
-  absenceSmsToManager: z.boolean(),
+  // joiningDate: z.string().optional().default(""),
+  // reportingManager: z.string().optional().default(""),
+  // gracePeriodMinutes: z.coerce.number().min(0).max(120),
+  // gateCamera: z.string().optional().default(""),
+  // weeklyOff: z.string().optional().default(""),
+  // overtimeEligible: z.boolean(),
+  // exemptFromLatePenalty: z.boolean(),
+  // absenceSmsToManager: z.boolean(),
 });
 
 export type Employee = z.infer<typeof employeeSchema>;
@@ -97,17 +109,20 @@ export interface EmployeeWritePayload {
   employee_code: string;
   first_name: string;
   last_name: string;
-  department_id: number;
-  designation_id: number;
-  shift_id: number | null;
+  department_id?: number | null;
+  /** Present when the form's department picker is Other. */
+  department_name?: string;
+  designation_id?: number | null;
+  /** Present when the form's designation picker is Other. */
+  designation_name?: string;
+  shift_id?: number | null;
+  /** 24-hour HH:MM. Replaces a shift picked from the shifts catalog. */
+  shift_start_time: string;
+  shift_end_time: string;
   employment_status: string;
   is_active: boolean;
   id_card_no?: string;
   phone?: string;
-  email?: string;
-  date_of_birth?: string;
-  job_title?: string;
-  hire_date?: string;
 }
 
 /**
@@ -123,32 +138,40 @@ export interface RealEmployeeRecord {
   first_name: string;
   last_name: string;
   full_name?: string;
-  email?: string | null;
   phone?: string | null;
   job_title?: string | null;
-  hire_date?: string | null;
-  date_of_birth?: string | null;
-  gender?: string | null;
-  id_card_no?: string | null;
-  division?: string | null;
   department_id?: number | null;
+  department_name?: string | null;
   designation_id?: number | null;
+  designation_name?: string | null;
   shift_id?: number | null;
+  shift_start_time?: string | null;
+  shift_end_time?: string | null;
   user_id?: number | null;
   employment_status?: string | null;
   is_active?: boolean;
   photo_path?: string | null;
   has_face_embedding?: boolean;
   created_at?: string;
+  id_card_no?: string;
 }
 
 /**
  * Adapts a backend employee record onto the shape the rest of this
- * app's UI renders. The display string stays "Shift #<id>" because this
- * adapter has no store access. The form reads `shiftId` and resolves the
- * name from the shifts slice, the same way it resolves department and
- * designation names.
+ * app's UI renders. Department and designation names come from the
+ * record when the backend sends them; otherwise the id is shown.
+ * Shift start and end are the 24-hour times stored on the record.
  */
+function clockTime(value: string | null | undefined): string {
+  if (!value) return "";
+  const match = /^(\d{2}):(\d{2})/.exec(value.trim());
+  if (!match) return "";
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return "";
+  return `${match[1]}:${match[2]}`;
+}
+
 /** A blank last name is shown and stored as a dash. */
 export function lastNameOrDash(lastName: string | null | undefined): string {
   const trimmed = lastName?.trim() ?? "";
@@ -171,27 +194,19 @@ export function toEmployee(record: RealEmployeeRecord): Employee {
     firstName,
     lastName,
     name: record.full_name?.trim() || employeeDisplayName(firstName, lastName),
-    designation: record.job_title ?? "",
+    designation: record.job_title?.trim() || record.designation_name?.trim() || "",
     designationId: record.designation_id ?? null,
     department:
-      record.department_id != null ? `Dept #${record.department_id}` : "",
+      record.department_name?.trim() ||
+      (record.department_id != null ? `Dept #${record.department_id}` : ""),
     departmentId: record.department_id ?? null,
-    shift: record.shift_id != null ? `Shift #${record.shift_id}` : "",
-    shiftId: record.shift_id ?? null,
+    // shift: record.shift_id != null ? `Shift #${record.shift_id}` : "",
+    // shiftId: record.shift_id ?? null,
+    shiftStart: clockTime(record.shift_start_time),
+    shiftEnd: clockTime(record.shift_end_time),
     employmentStatus: record.employment_status ?? (record.is_active ? "active" : "inactive"),
-    email: record.email ?? "",
     phone: record.phone ?? "",
     cnic: record.id_card_no ?? "",
-    joiningDate: record.hire_date ?? "",
-    dateOfBirth: record.date_of_birth ?? "",
-    reportingManager: "",
-    gateCamera: "",
-    gracePeriodMinutes: 0,
-    weeklyOff: "",
-    overtimeEligible: true,
-    exemptFromLatePenalty: false,
-    absenceSmsToManager: true,
-    enrolledAngles: 0,
     createdAt: record.created_at ?? "",
     photoPath: record.photo_path?.trim() ? record.photo_path : null,
   };
@@ -210,19 +225,14 @@ export const EMPTY_EMPLOYEE: EmployeeInput = {
   employeeCode: "",
   cnic: "",
   phone: "",
-  email: "",
-  dateOfBirth: "",
   departmentId: 0,
+  departmentChoice: "",
+  customDepartment: "",
   designationId: 0,
+  designationChoice: "",
+  customDesignation: "",
   designation: "",
-  shiftId: 0,
-  joiningDate: "",
-  reportingManager: "",
+  shiftStart: "",
+  shiftEnd: "",
   employmentStatus: "Active",
-  gracePeriodMinutes: 0,
-  gateCamera: "",
-  weeklyOff: "",
-  overtimeEligible: true,
-  exemptFromLatePenalty: false,
-  absenceSmsToManager: true,
 };

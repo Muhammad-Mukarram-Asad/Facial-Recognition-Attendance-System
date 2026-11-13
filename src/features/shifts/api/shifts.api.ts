@@ -14,10 +14,14 @@ export const shiftsApi = {
   // GET /api/v1/shifts/full — requires auth, so this is only ever
   // called once a session exists (see authSlice/shiftsSlice).
   list: async (): Promise<ShiftType[]> => {
-    const { data } = await apiClient.get<ShiftsResponse>(
-      `${SHIFTS_API_URL}/full`,
-      { params: { include_deleted: false, active_only: true } },
-    );
-    return data.data.shifts;
+    // Employee shift start and end are entered on the form.
+    // Kept commented so GET /shifts/full cannot run.
+    // const { data } = await apiClient.get<ShiftsResponse>(
+    //   `${SHIFTS_API_URL}/full`,
+    //   { params: { include_deleted: false, active_only: true } },
+    // );
+    // return data.data.shifts;
+    void [apiClient, SHIFTS_API_URL, null as ShiftsResponse | null];
+    return [];
   },
 };
