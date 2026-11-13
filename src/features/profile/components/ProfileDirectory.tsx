@@ -34,7 +34,6 @@ function employeeMatches(employee: Employee, query: string, departmentName: stri
     employee.name,
     employee.id,
     employee.employeeCode,
-    employee.email,
     employee.phone,
     employee.cnic,
     employee.designation,

@@ -33,12 +33,18 @@ export const attendanceRegisterSchema = z.object({
 export type AttendanceRegister = z.infer<typeof attendanceRegisterSchema>["data"];
 export type AttendanceRecord = AttendanceRegister["records"][number];
 
-/** Noon in Asia/Karachi so the register uses the calendar day the user picked. */
-export function toRegisterTimestamp(date: Date): string {
+/**
+ * Calendar day the user picked, with the current UTC clock and a +05:00 offset.
+ * The API adds those five hours, so 14:27 UTC is read as 19:27 in Asia/Karachi.
+ */
+export function toRegisterTimestamp(date: Date, now = new Date()): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}T12:00:00+05:00`;
+  const hours = String(now.getUTCHours()).padStart(2, "0");
+  const minutes = String(now.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(now.getUTCSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+05:00`;
 }
 
 export function startOfToday(): Date {

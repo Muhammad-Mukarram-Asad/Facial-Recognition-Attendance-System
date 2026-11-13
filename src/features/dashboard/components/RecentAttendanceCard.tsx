@@ -9,6 +9,7 @@ import { formatClock } from '@/shared/lib/format';
 import { Avatar, Card, CardHeader, EmptyState, Skeleton } from '@/shared/ui';
 
 import { streamPhotoUrl } from '../api/attendance-stream.api';
+import { useAttendanceStreamStatus } from '../hooks/useAttendanceStream';
 import { useLiveAttendanceEvents } from '../hooks/useLiveAttendanceEvents';
 import { eventLabel, gateLabel } from '../lib/event-label';
 import { streamEventKey, type AttendanceStreamEvent } from '../types';
@@ -18,14 +19,16 @@ const DESKTOP_LIMIT = 12;
 const COMPACT_LIMIT = 9;
 
 /**
- * Newest gate events as a photo grid. Laptops and desktops show up to 12
- * across four columns. Narrower screens show up to 9, in three columns once
- * each face still has room, otherwise two, so the capture stays recognizable.
- * "View all" opens the attendance records page.
+ * The dashboard's real-time gate feed, in the recent-attendance photo grid.
+ * GET /api/v1/attendance/events fills the last 24 hours; the session stream
+ * appends frames after that. Laptops and desktops show up to 12 across four
+ * columns. Narrower screens show up to 9, in three columns once each face
+ * still has room, otherwise two. "View all" opens the attendance records page.
  */
 export function RecentAttendanceCard() {
   const isDesktop = useIsDesktop();
   const isThreeUp = useMediaQuery('(min-width: 560px)');
+  const { isConnected } = useAttendanceStreamStatus();
   const { events, isPending } = useLiveAttendanceEvents();
   const [preview, setPreview] = useState<EmployeePhotoPreview | null>(null);
   const closePreview = useCallback(() => setPreview(null), []);
@@ -39,9 +42,12 @@ export function RecentAttendanceCard() {
       <CardHeader
         title="Recent attendance"
         meta={
-          <Link href={ROUTES.attendance} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-brand)' }}>
-            View all
-          </Link>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+            <LiveStatus connected={isConnected} />
+            <Link href={ROUTES.attendance} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-brand)' }}>
+              View all
+            </Link>
+          </span>
         }
       />
 
@@ -63,6 +69,38 @@ export function RecentAttendanceCard() {
 
       {preview ? <EmployeePhotoModal preview={preview} onClose={closePreview} /> : null}
     </Card>
+  );
+}
+
+function LiveStatus({ connected }: { connected: boolean }) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 7,
+        padding: '4px 10px',
+        borderRadius: 'var(--radius-pill)',
+        background: connected ? 'var(--lucky-lime-100)' : 'var(--surface-subtle)',
+        color: connected ? 'var(--lucky-lime-600)' : 'var(--text-faint)',
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: '0.06em',
+        textTransform: 'uppercase',
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          width: 7,
+          height: 7,
+          borderRadius: '50%',
+          background: connected ? 'var(--lucky-lime-500)' : 'var(--text-faint)',
+          animation: connected ? 'ftPulse 2s infinite' : 'none',
+        }}
+      />
+      {connected ? 'Live' : 'Reconnecting…'}
+    </span>
   );
 }
 

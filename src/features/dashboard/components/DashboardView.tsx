@@ -8,8 +8,9 @@ import { Button, Card, Counter, Skeleton, StatCard } from "@/shared/ui";
 
 import { useAttendanceAnalytics } from "../hooks/useDashboard";
 import { startOfToday, toDayTimestamp } from "../types";
+import { CheckInActivityCard } from "./CheckInActivityCard";
 import { DateRangeFilter } from "./DateRangeFilter";
-import { LiveStreamCard } from "./LiveStreamCard";
+// import { LiveStreamCard } from "./LiveStreamCard";
 import { PresenceCard } from "./PresenceCard";
 import { RecentAttendanceCard } from "./RecentAttendanceCard";
 
@@ -90,8 +91,9 @@ export function DashboardView() {
         </>
       )}
 
-      <LiveStreamCard />
+      {/* <LiveStreamCard /> */}
       <RecentAttendanceCard />
+      <CheckInActivityCard />
     </div>
   );
 }

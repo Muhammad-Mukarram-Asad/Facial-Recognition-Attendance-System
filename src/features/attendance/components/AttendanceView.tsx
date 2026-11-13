@@ -172,7 +172,7 @@ export function AttendanceView() {
   const [exporting, setExporting] = useState(false);
   const closePreview = useCallback(() => setPreview(null), []);
   const roster = useAllEmployees();
-  const timestamp = toRegisterTimestamp(date);
+  const timestamp = useMemo(() => toRegisterTimestamp(date), [date]);
   const register = useAttendanceRegister(filterToQuery(timestamp, statusFilter));
 
   // Date, status, and search each restart the list at page 1.
