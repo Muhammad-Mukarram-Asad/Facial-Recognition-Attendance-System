@@ -1,0 +1,9 @@
+{
+  "employee_id": 1,
+  "timestamp": "2026-10-16T12:53:00+05:00",
+  "event_type": "entry",
+  "location": "gate_01",
+  "camera_id": "webcam-test",
+  "confidence": 0.41,
+  "image_path": "Robot.jpg"
+}

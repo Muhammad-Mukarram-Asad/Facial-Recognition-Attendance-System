@@ -20,9 +20,11 @@ export type EmployeeStatusSlug = (typeof EMPLOYEE_STATUS_SLUGS)[number];
 export const employeeSchema = z.object({
   id: z.string(),
   employeeCode: z.string(),
-  firstName: z.string(),
-  lastName: z.string(),
-  /** First and last name together, for lists and avatars. */
+  attendanceCode: z.string(),
+  fullName: z.string(),
+  // firstName: z.string(),
+  // lastName: z.string(),
+  /** Full name, for lists and avatars. */
   name: z.string(),
   designation: z.string(),
   designationId: z.number().nullable(),
@@ -36,8 +38,8 @@ export const employeeSchema = z.object({
   employmentStatus: z.string(),
   phone: z.string(),
   cnic: z.string(),
+  joiningDate: z.string(),
   // email: z.string(),
-  // joiningDate: z.string(),
   // dateOfBirth: z.string(),
   // reportingManager: z.string(),
   // gateCamera: z.string(),
@@ -60,11 +62,14 @@ export const employeeListSchema = z.object({
 /** Payload for create/update. Required fields mirror the asterisks in the design. */
 export const employeeInputSchema = z.object({
   id: z.number().optional(),
-  firstName: z.string().trim().min(1, "First name is required"),
-  lastName: z.string().optional().default(""),
-  employeeCode: z.string().min(1, "Employee Code is required"),
+  fullName: z.string().trim().min(1, "Full name is required"),
+  // firstName: z.string().trim().min(1, "First name is required"),
+  // lastName: z.string().optional().default(""),
+  attendanceCode: z.string().trim().min(1, "Attendance code is required"),
+  employeeCode: z.string().trim().min(1, "Employee code is required"),
   cnic: z.string().optional().default(""),
-  phone: z.string().optional().default(""),
+  joiningDate: z.string().optional().default(""),
+  // phone: z.string().optional().default(""),
   // email: z.string().email("Enter a valid email").or(z.literal("")).default(""),
   // dateOfBirth: z.string().optional().default(""),
   departmentId: z.coerce.number().min(0),
@@ -81,7 +86,6 @@ export const employeeInputSchema = z.object({
   shiftStart: z.string(),
   shiftEnd: z.string(),
   employmentStatus: z.enum(EMPLOYMENT_STATUSES),
-  // joiningDate: z.string().optional().default(""),
   // reportingManager: z.string().optional().default(""),
   // gracePeriodMinutes: z.coerce.number().min(0).max(120),
   // gateCamera: z.string().optional().default(""),
@@ -98,17 +102,18 @@ export type EmployeeInput = z.infer<typeof employeeInputSchema>;
 /**
  * The `employee_data` JSON body the real /api/v1/employees endpoints
  * accept (POST to create, PUT to update), confirmed against a working
- * request payload — snake_case, separate first and last name, `id_card_no` instead of
- * `cnic`. `email` is confirmed to exist on the record (see
- * RealEmployeeRecord) even though the first working create payload
- * happened not to include it.
+ * request payload — snake_case, `full_name`, separate attendance and
+ * employee codes, and `joining_date`. `id_card_no` is sent on update
+ * only; the add form does not collect it.
  */
 export interface EmployeeWritePayload {
   /** Workforce primary key. Sent as an integer on update. */
   id?: number;
   employee_code: string;
-  first_name: string;
-  last_name: string;
+  attendance_code: string;
+  full_name: string;
+  // first_name: string;
+  // last_name: string;
   department_id?: number | null;
   /** Present when the form's department picker is Other. */
   department_name?: string;
@@ -121,8 +126,11 @@ export interface EmployeeWritePayload {
   shift_end_time: string;
   employment_status: string;
   is_active: boolean;
+  /** yyyy-mm-dd. Omitted when the form leaves joining date blank. */
+  joining_date?: string;
+  /** Sent when editing an existing record. The add form does not collect it. */
   id_card_no?: string;
-  phone?: string;
+  // phone?: string;
 }
 
 /**
@@ -138,6 +146,7 @@ export interface RealEmployeeRecord {
   first_name: string;
   last_name: string;
   full_name?: string;
+  joining_date?: string | null;
   phone?: string | null;
   job_title?: string | null;
   department_id?: number | null;
@@ -172,6 +181,17 @@ function clockTime(value: string | null | undefined): string {
   return `${match[1]}:${match[2]}`;
 }
 
+/** Calendar date for `<input type="date">`: yyyy-mm-dd, or "" when absent. */
+function toDateInput(value: string | null | undefined): string {
+  if (!value) return "";
+  const trimmed = value.trim();
+  const iso = /^(\d{4}-\d{2}-\d{2})/.exec(trimmed);
+  if (iso) return iso[1];
+  const dmy = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmed);
+  if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
+  return "";
+}
+
 /** A blank last name is shown and stored as a dash. */
 export function lastNameOrDash(lastName: string | null | undefined): string {
   const trimmed = lastName?.trim() ?? "";
@@ -188,12 +208,15 @@ export function employeeDisplayName(firstName: string, lastName: string): string
 export function toEmployee(record: RealEmployeeRecord): Employee {
   const firstName = record.first_name?.trim() ?? "";
   const lastName = lastNameOrDash(record.last_name);
+  const fullName = record.full_name?.trim() || employeeDisplayName(firstName, lastName);
   return {
     id: String(record.id ?? record.employee_code),
     employeeCode: record.employee_code,
-    firstName,
-    lastName,
-    name: record.full_name?.trim() || employeeDisplayName(firstName, lastName),
+    attendanceCode: record.attendance_code?.trim() ?? "",
+    fullName,
+    // firstName,
+    // lastName,
+    name: fullName,
     designation: record.job_title?.trim() || record.designation_name?.trim() || "",
     designationId: record.designation_id ?? null,
     department:
@@ -207,6 +230,7 @@ export function toEmployee(record: RealEmployeeRecord): Employee {
     employmentStatus: record.employment_status ?? (record.is_active ? "active" : "inactive"),
     phone: record.phone ?? "",
     cnic: record.id_card_no ?? "",
+    joiningDate: toDateInput(record.joining_date),
     createdAt: record.created_at ?? "",
     photoPath: record.photo_path?.trim() ? record.photo_path : null,
   };
@@ -220,11 +244,14 @@ export interface EmployeeQuery {
 }
 
 export const EMPTY_EMPLOYEE: EmployeeInput = {
-  firstName: "",
-  lastName: "",
+  fullName: "",
+  // firstName: "",
+  // lastName: "",
+  attendanceCode: "",
   employeeCode: "",
   cnic: "",
-  phone: "",
+  joiningDate: "",
+  // phone: "",
   departmentId: 0,
   departmentChoice: "",
   customDepartment: "",

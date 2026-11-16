@@ -54,11 +54,13 @@ function toInput(employee: Employee): EmployeeInput {
   const customDesignation = employee.designationId ? "" : employee.designation.trim();
   return {
     ...EMPTY_EMPLOYEE,
-    firstName: employee.firstName,
-    lastName: employee.lastName.trim() ? employee.lastName : "-",
+    fullName: employee.fullName,
+    // firstName: employee.firstName,
+    // lastName: employee.lastName.trim() ? employee.lastName : "-",
+    attendanceCode: employee.attendanceCode,
     employeeCode: employee.employeeCode,
     cnic: digitsOnly(employee.cnic, CNIC_DIGIT_LIMIT),
-    phone: digitsOnly(employee.phone, PHONE_DIGIT_LIMIT),
+    joiningDate: employee.joiningDate,
     departmentId: employee.departmentId ?? 0,
     departmentChoice: employee.departmentId
       ? String(employee.departmentId)
@@ -88,7 +90,7 @@ function toIsoDate(ddmmyyyy: string): string {
 
 /** Official CNIC is 13 digits. Dashes are display-only: 42101-1234567-8. */
 const CNIC_DIGIT_LIMIT = 13;
-const PHONE_DIGIT_LIMIT = 11;
+// const PHONE_DIGIT_LIMIT = 11;
 /** First real choice in the department and designation lists. */
 const OTHER_VALUE = "other";
 const TIME_24 = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -129,20 +131,25 @@ function toIntegerId(value: string): number | null {
  * shifts catalog is not used.
  * job_title is the picked designation's name, or the typed one.
  * employment_status/is_active default to "active"/true.
+ * full_name replaces separate first and last name. id_card_no is
+ * included only when updating, because the add form does not collect CNIC.
  */
 function buildWritePayload(
   data: EmployeeInput,
   designationName: string | undefined,
   recordId?: number,
 ): EmployeeWritePayload {
-  const lastName = data.lastName.trim();
+  // const lastName = data.lastName.trim();
   const otherDepartment = data.departmentChoice === OTHER_VALUE;
   const otherDesignation = data.designationChoice === OTHER_VALUE;
+  const cnic = digitsOnly(data.cnic, CNIC_DIGIT_LIMIT);
   return {
     ...(recordId !== undefined ? { id: recordId } : {}),
-    employee_code: data.employeeCode,
-    first_name: data.firstName.trim(),
-    last_name: lastName && lastName !== "-" ? lastName : "-",
+    employee_code: data.employeeCode.trim(),
+    attendance_code: data.attendanceCode.trim(),
+    full_name: data.fullName.trim(),
+    // first_name: data.firstName.trim(),
+    // last_name: lastName && lastName !== "-" ? lastName : "-",
     ...(otherDepartment
       ? { department_name: data.customDepartment.trim() }
       : { department_id: Number(data.departmentChoice) }),
@@ -154,8 +161,9 @@ function buildWritePayload(
     shift_end_time: data.shiftEnd,
     employment_status: "active",
     is_active: true,
-    id_card_no: digitsOnly(data.cnic, CNIC_DIGIT_LIMIT) || undefined,
-    phone: digitsOnly(data.phone, PHONE_DIGIT_LIMIT) || undefined,
+    ...(data.joiningDate ? { joining_date: data.joiningDate } : {}),
+    ...(recordId !== undefined && cnic ? { id_card_no: cnic } : {}),
+    // phone: digitsOnly(data.phone, PHONE_DIGIT_LIMIT) || undefined,
   };
 }
 
@@ -825,6 +833,14 @@ export function EmployeeForm({
           <SectionLabel>Identity</SectionLabel>
           <div style={grid}>
             <TextField
+              label="Full name *"
+              placeholder="Imran Qureshi"
+              autoComplete="name"
+              value={values.fullName}
+              error={errors.fullName}
+              onChange={set("fullName")}
+            />
+            {/* <TextField
               label="First name *"
               placeholder="Imran"
               value={values.firstName}
@@ -837,33 +853,50 @@ export function EmployeeForm({
               value={values.lastName}
               error={errors.lastName}
               onChange={set("lastName")}
-            />
+            /> */}
             <TextField
-              label="Employee Code *"
+              label="Attendance code *"
               mono
               placeholder="A-0000"
+              value={values.attendanceCode}
+              error={errors.attendanceCode}
+              onChange={set("attendanceCode")}
+            />
+            <TextField
+              label="Employee code *"
+              mono
+              placeholder="E-0000"
               value={values.employeeCode}
               error={errors.employeeCode}
               onChange={set("employeeCode")}
               disabled={isEdit}
             />
             <TextField
-              label="CNIC / national ID"
-              mono
-              inputMode="numeric"
-              autoComplete="off"
-              placeholder="42101-1234567-8"
-              maxLength={15}
-              value={formatCnic(values.cnic)}
-              onChange={(event) => {
-                setValues((prev) => ({
-                  ...prev,
-                  cnic: digitsOnly(event.target.value, CNIC_DIGIT_LIMIT),
-                }));
-                setSaved(false);
-              }}
+              label="Joining date"
+              type="date"
+              value={values.joiningDate}
+              error={errors.joiningDate}
+              onChange={set("joiningDate")}
             />
-            <TextField
+            {isEdit && (
+              <TextField
+                label="CNIC / national ID"
+                mono
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="42101-1234567-8"
+                maxLength={15}
+                value={formatCnic(values.cnic)}
+                onChange={(event) => {
+                  setValues((prev) => ({
+                    ...prev,
+                    cnic: digitsOnly(event.target.value, CNIC_DIGIT_LIMIT),
+                  }));
+                  setSaved(false);
+                }}
+              />
+            )}
+            {/* <TextField
               label="Mobile number"
               mono
               inputMode="numeric"
@@ -878,7 +911,7 @@ export function EmployeeForm({
                 }));
                 setSaved(false);
               }}
-            />
+            /> */}
             {/* <TextField
               label="Email"
               type="email"
