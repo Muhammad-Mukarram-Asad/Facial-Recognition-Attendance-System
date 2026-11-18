@@ -14,6 +14,8 @@ export interface FaceEnrollmentCardProps {
 }
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png"];
+/** Stop the spinner even if the browser never signals the picker opened. */
+const PICKER_SPINNER_MAX_MS = 8000;
 
 /** Kiosk capture preview — shows the scanning sweep until a photo is uploaded. */
 export function FaceEnrollmentCard({
@@ -23,6 +25,44 @@ export function FaceEnrollmentCard({
   const inputRef = useRef<HTMLInputElement>(null);
   const [localPhotoUrl, setLocalPhotoUrl] = useState<string | null>(null);
   const photoUrl = localPhotoUrl ?? existingPhotoUrl;
+  /** True from the click until the file picker shows up (or closes). */
+  const [openingPicker, setOpeningPicker] = useState(false);
+  const stopWaitingRef = useRef<(() => void) | null>(null);
+
+  // Drop any pending picker listeners if the card unmounts mid-wait.
+  useEffect(() => () => stopWaitingRef.current?.(), []);
+
+  /**
+   * The OS file dialog can take a moment to appear, and browsers don't say
+   * when it opens. Spin until the first sign it did: the window loses focus
+   * to the dialog, a file is picked, or the dialog is cancelled.
+   */
+  const openPicker = () => {
+    const input = inputRef.current;
+    if (!input || openingPicker) return;
+    setOpeningPicker(true);
+
+    const stop = () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("blur", stop);
+      window.removeEventListener("focus", stop);
+      input.removeEventListener("change", stop);
+      input.removeEventListener("cancel", stop);
+      stopWaitingRef.current = null;
+      setOpeningPicker(false);
+    };
+    const timer = window.setTimeout(stop, PICKER_SPINNER_MAX_MS);
+    window.addEventListener("blur", stop);
+    window.addEventListener("focus", stop);
+    input.addEventListener("change", stop);
+    input.addEventListener("cancel", stop);
+    stopWaitingRef.current = stop;
+
+    // Must stay inside the click handler: browsers only open a file picker
+    // from a direct user gesture. The dialog request is async, so the
+    // spinner still paints while the OS dialog is on its way.
+    input.click();
+  };
 
   // Revoke only the locally picked object URL. The saved photo is a remote URL.
   useEffect(() => {
@@ -182,9 +222,10 @@ export function FaceEnrollmentCard({
           variant="brand"
           size="sm"
           icon="upload"
-          onClick={() => inputRef.current?.click()}
+          loading={openingPicker}
+          onClick={openPicker}
         >
-         {photoUrl ? "Update photo" : "Upload photo"}
+          {photoUrl ? "Update photo" : "Upload photo"}
         </Button>
         {localPhotoUrl && (
           <Button

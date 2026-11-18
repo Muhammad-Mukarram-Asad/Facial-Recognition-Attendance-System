@@ -16,7 +16,7 @@ import { endAuthSession, saveAuthSession } from "../lib/saved-session";
 import { addUser, clearUser } from "../store/authSlice";
 
 /**
- * Backed by Redux, the 1-hour `_ca` token cookie, and a cached profile
+ * Backed by Redux, the 2-hour `_ca` token cookie, and a cached profile
  * (see authSlice + saved-session). Returns the same `{ data, isPending }`
  * shape the old session-storage version did, so AuthGuard/Sidebar/Topbar —
  * which read `session?.user.name` etc. — didn't need to change.

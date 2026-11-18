@@ -10,6 +10,12 @@ interface DesignationsResponse {
   data: { designations: Designation[] };
 }
 
+interface DesignationResponse {
+  success: boolean;
+  message: string;
+  data: Designation;
+}
+
 export const designationsApi = {
   // GET /api/v1/designations/full — requires auth, so this is only ever
   // called once a session exists (see authSlice/designationsSlice).
@@ -19,5 +25,12 @@ export const designationsApi = {
       { params: { include_deleted: false } },
     );
     return data.data.designations;
+  },
+
+  // POST /api/v1/designations — only `name` is required; `code` and
+  // `is_active` (default true) are left to the backend.
+  create: async (name: string): Promise<Designation> => {
+    const { data } = await apiClient.post<DesignationResponse>(DESIGNATIONS_API_URL, { name });
+    return data.data;
   },
 };

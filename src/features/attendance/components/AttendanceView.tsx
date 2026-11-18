@@ -31,13 +31,16 @@ import {
 const PAGE_SIZE = 100;
 const PAGE_WINDOW = 5;
 
-/** Status chips on the attendance register. Early, incomplete, and pending are not filters. */
-const FILTER_STATUSES = ["present", "absent", "late", "blacklisted"] as const satisfies readonly AttendanceStatus[];
+/**
+ * Status chips on the attendance register. Present and absent are the daily
+ * `status` the API filters on. Blacklisted is the workforce employee_status,
+ * which the API can't filter, so it's applied to the full day's rows here.
+ */
+const FILTER_STATUSES = ["present", "absent", "blacklisted"] as const;
 
 const STATUS_LABELS: Record<(typeof FILTER_STATUSES)[number], string> = {
   present: "Present",
   absent: "Absent",
-  late: "Late",
   blacklisted: "Blacklisted",
 };
 
@@ -62,11 +65,16 @@ const CSV_COLUMNS = [
   "Early departure",
 ] as const;
 
-/** Present, absent, late, and blacklisted go out as `status`. Late also sets the lateness flag. */
+/** Present and absent go out as `status`. All and blacklisted fetch every row. */
 function filterToQuery(timestamp: string, filter: StatusFilter): AttendanceRegisterQuery {
-  if (filter === "all") return { timestamp };
-  if (filter === "late") return { timestamp, status: "late", is_late: true };
-  return { timestamp, status: filter };
+  if (filter === "present" || filter === "absent") {
+    return { timestamp, status: filter satisfies AttendanceStatus };
+  }
+  return { timestamp };
+}
+
+function isBlacklistedRecord(record: AttendanceRecord): boolean {
+  return record.employee_status?.trim().toLowerCase() === "blacklisted";
 }
 
 const GRID =
@@ -189,7 +197,7 @@ export function AttendanceView() {
     () => (register.data ? copyRegister(register.data) : null),
     [register.data],
   );
-  const records = snapshot?.records ?? [];
+  const records = useMemo(() => snapshot?.records ?? [], [snapshot]);
   const enrollmentPhotos = useMemo(() => {
     const photos = new Map<number, string>();
     for (const employee of roster.data?.items ?? []) {
@@ -223,6 +231,7 @@ export function AttendanceView() {
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return records.filter((record) => {
+      if (statusFilter === "blacklisted" && !isBlacklistedRecord(record)) return false;
       if (!query) return true;
       return [record.name, String(record.employee_id), record.designation, record.department, record.status]
         .filter(Boolean)
@@ -230,7 +239,7 @@ export function AttendanceView() {
         .toLowerCase()
         .includes(query);
     });
-  }, [records, search]);
+  }, [records, search, statusFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(listChanged ? 1 : page, pageCount);

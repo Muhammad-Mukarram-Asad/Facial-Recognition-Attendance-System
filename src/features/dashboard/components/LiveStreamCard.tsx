@@ -10,6 +10,7 @@ import { useAttendanceStreamStatus } from '../hooks/useAttendanceStream';
 import { useLiveAttendanceEvents } from '../hooks/useLiveAttendanceEvents';
 import { streamEventKey, type AttendanceStreamEvent } from '../types';
 import { EmployeePhotoModal, previewFromStreamEvent, type EmployeePhotoPreview } from './EmployeePhotoModal';
+import { EmployeeStatusBadge } from './EmployeeStatusBadge';
 
 /**
  * Rolling last-24h feed. GET /api/v1/attendance/events fills the window on
@@ -96,17 +97,23 @@ export function LiveStreamCard() {
                 </span>
               </span>
               <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: 'var(--text-strong)',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {event.employee_name || `Employee #${event.employee_id}`}
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <span
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: 'var(--text-strong)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      minWidth: 0,
+                    }}
+                  >
+                    {event.employee_name || `Employee #${event.employee_id}`}
+                  </span>
+                  <span style={{ flex: 'none' }}>
+                    <EmployeeStatusBadge status={event.employee_status} />
+                  </span>
                 </span>
                 <span
                   style={{

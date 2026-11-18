@@ -4,17 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { toApiError } from "@/shared/api/client";
-import {
-  Badge,
-  Button,
-  Card,
-  Icon,
-  SelectField,
-  TextField,
-} from "@/shared/ui";
+import { Badge, Button, Card, Icon, SelectField, TextField } from "@/shared/ui";
+
+import { useAppDispatch } from "@/shared/store/hooks";
 
 import { useDepartments } from "@/features/departments/hooks/useDepartments";
+import { createDepartment } from "@/features/departments/store/departmentsSlice";
 import { useDesignations } from "@/features/designations/hooks/useDesignations";
+import { createDesignation } from "@/features/designations/store/designationsSlice";
+
+import { AddCatalogItemModal } from "./AddCatalogItemModal";
 
 import {
   useCreateEmployee,
@@ -23,10 +22,14 @@ import {
   useUpdateEmployee,
 } from "../hooks/useEmployees";
 import {
+  EMPLOYEE_DIVISIONS,
   EMPTY_EMPLOYEE,
   employeeInputSchema,
+  isActiveForStatus,
+  toEmployeeStatusSlug,
   type Employee,
   type EmployeeInput,
+  type EmployeeStatusSlug,
   type EmployeeWritePayload,
 } from "../types";
 
@@ -41,17 +44,13 @@ function formValuesMatch(a: EmployeeInput, b: EmployeeInput): boolean {
   return (Object.keys(a) as (keyof EmployeeInput)[]).every((key) => {
     const left = a[key];
     const right = b[key];
-    if (typeof left === "boolean" || typeof right === "boolean") return left === right;
+    if (typeof left === "boolean" || typeof right === "boolean")
+      return left === right;
     return String(left ?? "") === String(right ?? "");
   });
 }
 
 function toInput(employee: Employee): EmployeeInput {
-  const customDepartment =
-    employee.departmentId || !employee.department.trim() || employee.department.startsWith("Dept #")
-      ? ""
-      : employee.department.trim();
-  const customDesignation = employee.designationId ? "" : employee.designation.trim();
   return {
     ...EMPTY_EMPLOYEE,
     fullName: employee.fullName,
@@ -60,25 +59,46 @@ function toInput(employee: Employee): EmployeeInput {
     attendanceCode: employee.attendanceCode,
     employeeCode: employee.employeeCode,
     cnic: digitsOnly(employee.cnic, CNIC_DIGIT_LIMIT),
-    joiningDate: employee.joiningDate,
+    hire_date: employee.hire_date,
     departmentId: employee.departmentId ?? 0,
     departmentChoice: employee.departmentId
       ? String(employee.departmentId)
-      : customDepartment
-        ? OTHER_VALUE
-        : "",
-    customDepartment,
+      : "",
     designationId: employee.designationId ?? 0,
     designationChoice: employee.designationId
       ? String(employee.designationId)
-      : customDesignation
-        ? OTHER_VALUE
-        : "",
-    customDesignation,
+      : "",
     shiftStart: employee.shiftStart,
     shiftEnd: employee.shiftEnd,
+    division:
+      EMPLOYEE_DIVISIONS.find((division) => division === employee.division) ??
+      "",
+    employmentStatus:
+      toEmployeeStatusSlug(employee.employmentStatus) ?? "active",
   };
 }
+
+const DIVISION_OPTIONS = [
+  { value: "", label: "Select a division" },
+  ...EMPLOYEE_DIVISIONS.map((division) => ({
+    value: division,
+    label: division,
+  })),
+];
+
+const STATUS_LABELS: Record<EmployeeStatusSlug, string> = {
+  active: "Active",
+  inactive: "Inactive",
+  blacklisted: "Blacklisted",
+  vip: "VIP",
+};
+
+const STATUS_OPTIONS = (Object.keys(STATUS_LABELS) as EmployeeStatusSlug[]).map(
+  (slug) => ({
+    value: slug,
+    label: STATUS_LABELS[slug],
+  }),
+);
 
 /** "dd/mm/yyyy" -> "yyyy-mm-dd" (ISO), or "" if incomplete/invalid. */
 function toIsoDate(ddmmyyyy: string): string {
@@ -91,9 +111,9 @@ function toIsoDate(ddmmyyyy: string): string {
 /** Official CNIC is 13 digits. Dashes are display-only: 42101-1234567-8. */
 const CNIC_DIGIT_LIMIT = 13;
 // const PHONE_DIGIT_LIMIT = 11;
-/** First real choice in the department and designation lists. */
-const OTHER_VALUE = "other";
 const TIME_24 = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+type CatalogKind = "department" | "designation";
 
 function digitsOnly(raw: string, limit: number): string {
   return raw.replace(/\D/g, "").slice(0, limit);
@@ -126,13 +146,17 @@ function toIntegerId(value: string): number | null {
  * Builds the snake_case body the real backend's create (POST) and update
  * (PUT) endpoints both accept, out of the form's validated values.
  * On update, `recordId` is the integer primary key sent as `id`.
- * A listed department or designation sends its id. Other sends the
- * typed name instead. Shift start and end are 24-hour HH:MM; the
- * shifts catalog is not used.
- * job_title is the picked designation's name, or the typed one.
- * employment_status/is_active default to "active"/true.
- * full_name replaces separate first and last name. id_card_no is
- * included only when updating, because the add form does not collect CNIC.
+ * - Department and designation are optional ids; a new one is created
+ *   through its own API (the "Other" popup) first.
+ * - Shift start and end (24-hour HH:MM) are sent together or not at all;
+ *   the backend resolves the shift from them, so `shift_id` is never sent.
+ * - employment_status is always sent. is_active follows it: on create,
+ *   false only for inactive; on update, set only by active (true) and
+ *   inactive (false) — blacklisted/vip leave it as it is, same as the
+ *   status slug route. (A status-only edit uses that route instead; see submit.)
+ * - TEMPORARY: the single Full name input is sent as `first_name` until the
+ *   form gets separate first/last name fields. id_card_no is included only
+ *   when updating, because the add form does not collect CNIC.
  */
 function buildWritePayload(
   data: EmployeeInput,
@@ -140,28 +164,37 @@ function buildWritePayload(
   recordId?: number,
 ): EmployeeWritePayload {
   // const lastName = data.lastName.trim();
-  const otherDepartment = data.departmentChoice === OTHER_VALUE;
-  const otherDesignation = data.designationChoice === OTHER_VALUE;
   const cnic = digitsOnly(data.cnic, CNIC_DIGIT_LIMIT);
+  const isUpdate = recordId !== undefined;
   return {
     ...(recordId !== undefined ? { id: recordId } : {}),
-    employee_code: data.employeeCode.trim(),
-    attendance_code: data.attendanceCode.trim(),
-    full_name: data.fullName.trim(),
-    // first_name: data.firstName.trim(),
+    // Name and both codes are locked when editing, so only create sends them.
+    ...(isUpdate
+      ? {}
+      : {
+          employee_code: data.employeeCode.trim(),
+          attendance_code: data.attendanceCode.trim(),
+          first_name: data.fullName.trim(),
+        }),
     // last_name: lastName && lastName !== "-" ? lastName : "-",
-    ...(otherDepartment
-      ? { department_name: data.customDepartment.trim() }
-      : { department_id: Number(data.departmentChoice) }),
-    ...(otherDesignation
-      ? { designation_name: data.customDesignation.trim() }
-      : { designation_id: Number(data.designationChoice) }),
-    // shift_id is not sent — start and end replace the shifts list.
-    shift_start_time: data.shiftStart,
-    shift_end_time: data.shiftEnd,
-    employment_status: "active",
-    is_active: true,
-    ...(data.joiningDate ? { joining_date: data.joiningDate } : {}),
+    ...(data.departmentChoice
+      ? { department_id: Number(data.departmentChoice) }
+      : {}),
+    ...(data.designationChoice
+      ? { designation_id: Number(data.designationChoice) }
+      : {}),
+    ...(data.division ? { division: data.division } : {}),
+    ...(data.shiftStart && data.shiftEnd
+      ? { shift_start_time: data.shiftStart, shift_end_time: data.shiftEnd }
+      : {}),
+    employment_status: data.employmentStatus,
+    ...(isUpdate
+      ? data.employmentStatus === "active" ||
+        data.employmentStatus === "inactive"
+        ? { is_active: data.employmentStatus === "active" }
+        : {}
+      : { is_active: isActiveForStatus(data.employmentStatus) }),
+    ...(data.hire_date ? { joining_date: data.hire_date } : {}),
     ...(recordId !== undefined && cnic ? { id_card_no: cnic } : {}),
     // phone: digitsOnly(data.phone, PHONE_DIGIT_LIMIT) || undefined,
   };
@@ -194,22 +227,16 @@ const grid: React.CSSProperties = {
 
 function employmentFieldErrors(values: EmployeeInput): Record<string, string> {
   const next: Record<string, string> = {};
-  if (values.departmentChoice === OTHER_VALUE) {
-    if (!values.customDepartment.trim()) next.customDepartment = "Enter a department name";
-  } else if (!values.departmentChoice) {
-    next.departmentChoice = "Department is required";
-  }
-  if (values.designationChoice === OTHER_VALUE) {
-    if (!values.customDesignation.trim()) next.customDesignation = "Enter a designation name";
-  } else if (!values.designationChoice) {
-    next.designationChoice = "Designation is required";
-  }
-  if (!values.shiftStart) next.shiftStart = "Start time is required";
-  else if (!TIME_24.test(values.shiftStart)) next.shiftStart = "Use 24-hour time (HH:MM)";
-  if (!values.shiftEnd) next.shiftEnd = "End time is required";
-  else if (!TIME_24.test(values.shiftEnd)) next.shiftEnd = "Use 24-hour time (HH:MM)";
-  else {
-    const order = shiftOrderError(values.shiftStart, values.shiftEnd);
+  // Department, designation and shift times are optional — but the two
+  // shift times go together: set both or neither.
+  const { shiftStart: start, shiftEnd: end } = values;
+  if (!start && !end) return next;
+  if (!start) next.shiftStart = "Set a start time with the end time";
+  else if (!TIME_24.test(start)) next.shiftStart = "Use 24-hour time (HH:MM)";
+  if (!end) next.shiftEnd = "Set an end time with the start time";
+  else if (!TIME_24.test(end)) next.shiftEnd = "Use 24-hour time (HH:MM)";
+  if (!next.shiftStart && !next.shiftEnd) {
+    const order = shiftOrderError(start, end);
     if (order) next.shiftEnd = order;
   }
   return next;
@@ -251,8 +278,14 @@ function TimeField({
 }) {
   const [hour = "", minute = ""] = value.split(":");
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
-      <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-strong)" }}>{label}</span>
+    <div
+      style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}
+    >
+      <span
+        style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-strong)" }}
+      >
+        {label}
+      </span>
       <div
         style={{
           display: "grid",
@@ -266,26 +299,39 @@ function TimeField({
           hideLabel
           label={`${label} hour`}
           options={HOUR_OPTIONS}
-          value={HOUR_OPTIONS.some((option) => option.value === hour) ? hour : ""}
+          value={
+            HOUR_OPTIONS.some((option) => option.value === hour) ? hour : ""
+          }
           onChange={(event) => onChange(event.target.value, minute)}
           style={error ? { borderColor: "var(--priority-high)" } : undefined}
         />
-        <span aria-hidden style={{ color: "var(--text-muted)", fontWeight: 700 }}>
+        <span
+          aria-hidden
+          style={{ color: "var(--text-muted)", fontWeight: 700 }}
+        >
           :
         </span>
         <SelectField
           hideLabel
           label={`${label} minute`}
           options={MINUTE_OPTIONS}
-          value={MINUTE_OPTIONS.some((option) => option.value === minute) ? minute : ""}
+          value={
+            MINUTE_OPTIONS.some((option) => option.value === minute)
+              ? minute
+              : ""
+          }
           onChange={(event) => onChange(hour, event.target.value)}
           style={error ? { borderColor: "var(--priority-high)" } : undefined}
         />
       </div>
       {error ? (
-        <span style={{ fontSize: 11.5, color: "var(--priority-high)" }}>{error}</span>
+        <span style={{ fontSize: 11.5, color: "var(--priority-high)" }}>
+          {error}
+        </span>
       ) : (
-        <span style={{ fontSize: 11.5, color: "var(--text-faint)" }}>24-hour</span>
+        <span style={{ fontSize: 11.5, color: "var(--text-faint)" }}>
+          24-hour
+        </span>
       )}
     </div>
   );
@@ -309,54 +355,37 @@ const catalogControl = (invalid: boolean): React.CSSProperties => ({
 });
 
 /**
- * One control for a catalog plus Other. Choosing Other types in that same
- * box. Leaving the box with a name shows the name there; clicking it again
- * opens the menu.
+ * Dropdown over a catalog (departments or designations). The first option,
+ * Other, doesn't select anything — it asks the parent to open the
+ * "Add new" popup, which selects the created item once it's saved.
  */
 function CatalogField({
   label,
   placeholder,
   emptyMenuLabel,
-  namePlaceholder,
   status,
   items,
   choice,
-  customName,
   error,
   onChange,
+  onOther,
 }: {
   label: string;
   placeholder: string;
   emptyMenuLabel: string;
-  namePlaceholder: string;
   status: string;
   items: readonly { id: number; name: string }[];
   choice: string;
-  customName: string;
   error?: string;
-  onChange: (choice: string, customName: string) => void;
+  onChange: (choice: string) => void;
+  onOther: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(customName);
-  const [trackedChoice, setTrackedChoice] = useState(choice);
-  if (choice !== trackedChoice) {
-    setTrackedChoice(choice);
-    if (choice !== OTHER_VALUE) setEditing(false);
-  }
   const rootRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const skipCommitRef = useRef(false);
   const listed = items.find((item) => String(item.id) === choice);
   const selectedLabel =
-    choice === OTHER_VALUE
-      ? customName.trim() || "Other"
-      : listed?.name || (choice && status === "loading" ? "Loading…" : placeholder);
+    listed?.name || (choice && status === "loading" ? "Loading…" : placeholder);
   const showingPlaceholder = selectedLabel === placeholder;
-
-  useEffect(() => {
-    if (editing) inputRef.current?.focus();
-  }, [editing]);
 
   useEffect(() => {
     if (!open) return;
@@ -367,75 +396,37 @@ function CatalogField({
     return () => document.removeEventListener("mousedown", close);
   }, [open]);
 
-  const commit = () => {
-    if (skipCommitRef.current) {
-      skipCommitRef.current = false;
-      return;
-    }
-    const name = draft.trim();
-    setEditing(false);
-    setOpen(false);
-    if (!name) {
-      if (choice === OTHER_VALUE) onChange(OTHER_VALUE, "");
-      return;
-    }
-    onChange(OTHER_VALUE, name);
-  };
-
-  const beginOther = () => {
-    setOpen(false);
-    setDraft(choice === OTHER_VALUE ? customName : "");
-    setEditing(true);
-  };
-
   return (
-    <div ref={rootRef} style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
-      <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-strong)" }}>{label}</span>
+    <div
+      ref={rootRef}
+      style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}
+    >
+      <span
+        style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-strong)" }}
+      >
+        {label}
+      </span>
       <div style={{ position: "relative", minWidth: 0 }}>
-        {editing ? (
-          <input
-            ref={inputRef}
-            aria-label={label}
-            aria-invalid={error ? true : undefined}
-            placeholder={namePlaceholder}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onBlur={commit}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                commit();
-              } else if (event.key === "Escape") {
-                event.preventDefault();
-                skipCommitRef.current = true;
-                setDraft(choice === OTHER_VALUE ? customName : "");
-                setEditing(false);
-              }
-            }}
-            style={{
-              ...catalogControl(Boolean(error)),
-              color: "var(--text-strong)",
-            }}
-          />
-        ) : (
-          <button
-            type="button"
-            aria-haspopup="listbox"
-            aria-expanded={open}
-            onClick={() => setOpen((current) => !current)}
-            style={{
-              ...catalogControl(Boolean(error)),
-              display: "block",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              color: showingPlaceholder ? "var(--text-muted)" : "var(--text-strong)",
-              cursor: "pointer",
-            }}
-          >
-            {selectedLabel}
-          </button>
-        )}
+        <button
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          onClick={() => setOpen((current) => !current)}
+          style={{
+            ...catalogControl(Boolean(error)),
+            display: "block",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            textAlign: "left",
+            color: showingPlaceholder
+              ? "var(--text-muted)"
+              : "var(--text-strong)",
+            cursor: "pointer",
+          }}
+        >
+          {selectedLabel}
+        </button>
         <span
           aria-hidden
           style={{
@@ -451,7 +442,7 @@ function CatalogField({
         >
           <Icon name="chevron-down" size={16} />
         </span>
-        {open && !editing && (
+        {open && (
           <ul
             role="listbox"
             aria-label={label}
@@ -472,7 +463,14 @@ function CatalogField({
               overflowY: "auto",
             }}
           >
-            <CatalogOption label="Other" selected={choice === OTHER_VALUE} onPick={beginOther} />
+            <CatalogOption
+              label="Other"
+              selected={false}
+              onPick={() => {
+                setOpen(false);
+                onOther();
+              }}
+            />
             {items.map((item) => (
               <CatalogOption
                 key={item.id}
@@ -480,19 +478,29 @@ function CatalogField({
                 selected={String(item.id) === choice}
                 onPick={() => {
                   setOpen(false);
-                  onChange(String(item.id), "");
+                  onChange(String(item.id));
                 }}
               />
             ))}
             {items.length === 0 && (
-              <li style={{ padding: "8px 12px", fontSize: 13, color: "var(--text-faint)" }}>
+              <li
+                style={{
+                  padding: "8px 12px",
+                  fontSize: 13,
+                  color: "var(--text-faint)",
+                }}
+              >
                 {emptyMenuLabel}
               </li>
             )}
           </ul>
         )}
       </div>
-      {error && <span style={{ fontSize: 11.5, color: "var(--priority-high)" }}>{error}</span>}
+      {error && (
+        <span style={{ fontSize: 11.5, color: "var(--priority-high)" }}>
+          {error}
+        </span>
+      )}
     </div>
   );
 }
@@ -556,22 +564,23 @@ export function EmployeeForm({
   const update = useUpdateEmployee();
   const setStatus = useSetEmployeeStatus();
   const remove = useDeleteEmployee();
-  const [markedBlacklisted, setMarkedBlacklisted] = useState(false);
-  const isBlacklisted =
-    markedBlacklisted ||
-    employee?.employmentStatus.trim().toLowerCase() === "blacklisted";
   const departments = useDepartments();
   const designations = useDesignations();
+  const dispatch = useAppDispatch();
+  /** Which "Other" popup is open, if any. */
+  const [addingKind, setAddingKind] = useState<CatalogKind | null>(null);
 
   const [values, setValues] = useState<EmployeeInput>(
     employee ? toInput(employee) : EMPTY_EMPLOYEE,
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
-  const [initialValues] = useState<EmployeeInput | null>(() =>
-    employee ? toInput(employee) : null,
+  const [initialValues, setInitialValues] = useState<EmployeeInput | null>(
+    () => (employee ? toInput(employee) : null),
   );
-  const hasChanges = initialValues != null && !formValuesMatch(initialValues, values);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const hasChanges =
+    initialValues != null && !formValuesMatch(initialValues, values);
 
   const set =
     <K extends keyof EmployeeInput>(key: K) =>
@@ -585,43 +594,47 @@ export function EmployeeForm({
       setSaved(false);
     };
 
-  const updateCatalog =
-    (kind: "department" | "designation") => (choice: string, customName: string) => {
-      const listedId = choice !== OTHER_VALUE && choice !== "" ? Number(choice) : 0;
-      setValues((prev) =>
-        kind === "department"
-          ? {
-              ...prev,
-              departmentChoice: choice,
-              departmentId: listedId,
-              customDepartment: choice === OTHER_VALUE ? customName : "",
-            }
-          : {
-              ...prev,
-              designationChoice: choice,
-              designationId: listedId,
-              customDesignation: choice === OTHER_VALUE ? customName : "",
-            },
+  const updateCatalog = (kind: CatalogKind) => (choice: string) => {
+    const id = choice ? Number(choice) : 0;
+    setValues((prev) =>
+      kind === "department"
+        ? { ...prev, departmentChoice: choice, departmentId: id }
+        : { ...prev, designationChoice: choice, designationId: id },
+    );
+    setSaved(false);
+    setErrors((prev) => {
+      const key =
+        kind === "department" ? "departmentChoice" : "designationChoice";
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  /**
+   * "Other" popup: creates only the kind that was clicked (POST, then a
+   * refetch of that one list into the store), then selects the new item.
+   */
+  const createCatalogItem = async (name: string) => {
+    if (!addingKind) return;
+    try {
+      const created =
+        addingKind === "department"
+          ? await dispatch(createDepartment(name)).unwrap()
+          : await dispatch(createDesignation(name)).unwrap();
+      updateCatalog(addingKind)(String(created.id));
+      toast.success(
+        `${addingKind === "department" ? "Department" : "Designation"} "${created.name}" added`,
       );
-      setSaved(false);
-      setErrors((prev) => {
-        const next = { ...prev };
-        if (kind === "department") {
-          delete next.departmentChoice;
-          delete next.customDepartment;
-          if (choice === OTHER_VALUE && !customName.trim()) {
-            next.customDepartment = "Enter a department name";
-          }
-        } else {
-          delete next.designationChoice;
-          delete next.customDesignation;
-          if (choice === OTHER_VALUE && !customName.trim()) {
-            next.customDesignation = "Enter a designation name";
-          }
-        }
-        return next;
-      });
-    };
+      setAddingKind(null);
+    } catch (error) {
+      // unwrap() rejects with the thunk's rejectWithValue string.
+      throw new Error(
+        typeof error === "string" ? error : toApiError(error).message,
+      );
+    }
+  };
 
   const setTime =
     (key: "shiftStart" | "shiftEnd") => (hour: string, minute: string) => {
@@ -639,7 +652,10 @@ export function EmployeeForm({
       });
     };
 
-  const liveShiftOrderError = shiftOrderError(values.shiftStart, values.shiftEnd);
+  const liveShiftOrderError = shiftOrderError(
+    values.shiftStart,
+    values.shiftEnd,
+  );
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -658,12 +674,9 @@ export function EmployeeForm({
     }
     setErrors({});
 
-    const selectedDesignationName =
-      parsed.data.designationChoice === OTHER_VALUE
-        ? parsed.data.customDesignation.trim()
-        : designations.items.find(
-            (designation) => String(designation.id) === parsed.data.designationChoice,
-          )?.name;
+    const selectedDesignationName = designations.items.find(
+      (designation) => String(designation.id) === parsed.data.designationChoice,
+    )?.name;
 
     if (isEdit && employee) {
       if (!hasChanges) return;
@@ -672,22 +685,65 @@ export function EmployeeForm({
         toast.error("Employee id must be an integer");
         return;
       }
-      update.mutate(
-        {
-          id,
-          input: buildWritePayload(parsed.data, selectedDesignationName, id),
-        },
-        {
-          onSuccess: () => {
+      const before = initialValues!;
+      // Only the status changed → the lighter PUT .../status/{slug} route.
+      // Anything else changed → one normal PUT, which carries the status too.
+      const onlyStatusChanged = formValuesMatch(
+        { ...before, employmentStatus: values.employmentStatus },
+        values,
+      );
+      const snapshot = values;
+      const save = () => {
+        setSavingEdit(true);
+        void (async () => {
+          try {
+            if (onlyStatusChanged) {
+              await setStatus.mutateAsync({
+                id: employee.id,
+                status: parsed.data.employmentStatus,
+              });
+            } else {
+              await update.mutateAsync({
+                id,
+                input: buildWritePayload(
+                  parsed.data,
+                  selectedDesignationName,
+                  id,
+                ),
+              });
+            }
+            setInitialValues(snapshot);
             setSaved(true);
             toast.success("Changes saved");
             onSaved?.();
-          },
-          onError: (error) => {
+          } catch (error) {
             toast.error(toApiError(error).message);
-          },
+          } finally {
+            setSavingEdit(false);
+          }
+        })();
+      };
+
+      // Blacklisting (via the Employee status dropdown) asks first, as the
+      // old Blacklist button did. Every other save goes straight through.
+      const blacklisting =
+        before.employmentStatus !== "blacklisted" &&
+        parsed.data.employmentStatus === "blacklisted";
+      if (!blacklisting) {
+        save();
+        return;
+      }
+      toast.warning(`Blacklist ${employee.name}?`, {
+        id: `blacklist-employee-${employee.id}`,
+        description: "Their status will be set to blacklisted.",
+        duration: Infinity,
+        actionButtonStyle: {
+          background: "var(--priority-high)",
+          color: "#fff",
         },
-      );
+        action: { label: "Blacklist", onClick: save },
+        cancel: { label: "Cancel", onClick: () => {} },
+      });
       return;
     }
 
@@ -714,40 +770,6 @@ export function EmployeeForm({
         },
       },
     );
-  };
-
-  const handleBlacklist = () => {
-    if (!employee || isBlacklisted) return;
-    toast.warning(`Blacklist ${employee.name}?`, {
-      id: `blacklist-employee-${employee.id}`,
-      description: "Their status will be set to blacklisted.",
-      duration: Infinity,
-      actionButtonStyle: {
-        background: "var(--priority-high)",
-        color: "#fff",
-      },
-      action: {
-        label: "Blacklist",
-        onClick: () => {
-          setStatus.mutate(
-            { id: employee.id, status: "blacklisted" },
-            {
-              onSuccess: () => {
-                setMarkedBlacklisted(true);
-                toast.success(`${employee.name} blacklisted`);
-              },
-              onError: (error) => {
-                toast.error(toApiError(error).message);
-              },
-            },
-          );
-        },
-      },
-      cancel: {
-        label: "Cancel",
-        onClick: () => {},
-      },
-    });
   };
 
   const handleDelete = () => {
@@ -812,12 +834,15 @@ export function EmployeeForm({
               style={{ margin: 0, fontSize: 13.5, color: "var(--text-muted)" }}
             >
               {isEdit
-                ? "Update the record below. Employee code can't be changed."
+                ? "Update the record below. Name, employee code and attendance code can't be changed."
                 : "Fields marked with an asterisk are required for gate matching."}
             </p>
           </div>
           {(!isEdit || hasChanges || saved) && (
-            <Badge tone={saved && !hasChanges ? "success" : "brand"} dot={saved && !hasChanges}>
+            <Badge
+              tone={saved && !hasChanges ? "success" : "brand"}
+              dot={saved && !hasChanges}
+            >
               {isEdit
                 ? hasChanges
                   ? "Unsaved changes"
@@ -839,6 +864,7 @@ export function EmployeeForm({
               value={values.fullName}
               error={errors.fullName}
               onChange={set("fullName")}
+              disabled={isEdit}
             />
             {/* <TextField
               label="First name *"
@@ -861,6 +887,7 @@ export function EmployeeForm({
               value={values.attendanceCode}
               error={errors.attendanceCode}
               onChange={set("attendanceCode")}
+              disabled={isEdit}
             />
             <TextField
               label="Employee code *"
@@ -874,9 +901,9 @@ export function EmployeeForm({
             <TextField
               label="Joining date"
               type="date"
-              value={values.joiningDate}
-              error={errors.joiningDate}
-              onChange={set("joiningDate")}
+              value={values.hire_date}
+              error={errors.hire_date}
+              onChange={set("hire_date")}
             />
             {isEdit && (
               <TextField
@@ -945,7 +972,7 @@ export function EmployeeForm({
           <SectionLabel>Employment</SectionLabel>
           <div style={grid}>
             <CatalogField
-              label="Department *"
+              label="Department"
               placeholder="Select a department"
               emptyMenuLabel={
                 departments.status === "loading"
@@ -954,16 +981,15 @@ export function EmployeeForm({
                     ? "Couldn't load departments"
                     : "No departments yet"
               }
-              namePlaceholder="Enter department name"
               status={departments.status}
               items={departments.items}
               choice={values.departmentChoice}
-              customName={values.customDepartment}
-              error={errors.departmentChoice || errors.customDepartment}
+              error={errors.departmentChoice}
               onChange={updateCatalog("department")}
+              onOther={() => setAddingKind("department")}
             />
             <CatalogField
-              label="Designation *"
+              label="Designation"
               placeholder="Select a designation"
               emptyMenuLabel={
                 designations.status === "loading"
@@ -972,22 +998,33 @@ export function EmployeeForm({
                     ? "Couldn't load designations"
                     : "No designations yet"
               }
-              namePlaceholder="Enter designation name"
               status={designations.status}
               items={designations.items}
               choice={values.designationChoice}
-              customName={values.customDesignation}
-              error={errors.designationChoice || errors.customDesignation}
+              error={errors.designationChoice}
               onChange={updateCatalog("designation")}
+              onOther={() => setAddingKind("designation")}
+            />
+            <SelectField
+              label="Division"
+              options={DIVISION_OPTIONS}
+              value={values.division}
+              onChange={set("division")}
+            />
+            <SelectField
+              label="Employee status"
+              options={STATUS_OPTIONS}
+              value={values.employmentStatus}
+              onChange={set("employmentStatus")}
             />
             <TimeField
-              label="Start time *"
+              label="Start time"
               value={values.shiftStart}
               error={errors.shiftStart}
               onChange={setTime("shiftStart")}
             />
             <TimeField
-              label="End time *"
+              label="End time"
               value={values.shiftEnd}
               error={errors.shiftEnd || liveShiftOrderError}
               onChange={setTime("shiftEnd")}
@@ -1018,8 +1055,8 @@ export function EmployeeForm({
               label="Joining date"
               mono
               placeholder="dd / mm / yyyy"
-              value={values.joiningDate}
-              onChange={set("joiningDate")}
+              value={values.hire_date}
+              onChange={set("hire_date")}
               disabled
             />
             <TextField
@@ -1099,28 +1136,18 @@ export function EmployeeForm({
           {isEdit ? (
             <>
               {hasChanges && (
-                <Button type="submit" icon="check" loading={update.isPending}>
+                <Button type="submit" icon="check" loading={savingEdit}>
                   Update changes
                 </Button>
               )}
               <span style={{ flex: 1, minWidth: 0 }} />
               <Button
                 type="button"
-                variant="secondary"
-                icon="ban"
-                onClick={handleBlacklist}
-                loading={setStatus.isPending}
-                disabled={isBlacklisted || remove.isPending}
-              >
-                {isBlacklisted ? "Blacklisted" : "Blacklist employee"}
-              </Button>
-              <Button
-                type="button"
                 variant="danger"
                 icon="trash"
                 onClick={handleDelete}
                 loading={remove.isPending}
-                disabled={setStatus.isPending}
+                disabled={savingEdit}
               >
                 Delete employee
               </Button>
@@ -1132,6 +1159,18 @@ export function EmployeeForm({
           )}
         </div>
       </form>
+      {addingKind && (
+        <AddCatalogItemModal
+          noun={addingKind}
+          placeholder={
+            addingKind === "department"
+              ? "e.g. Human Resources"
+              : "e.g. Software Engineer"
+          }
+          onCreate={createCatalogItem}
+          onClose={() => setAddingKind(null)}
+        />
+      )}
     </Card>
   );
 }

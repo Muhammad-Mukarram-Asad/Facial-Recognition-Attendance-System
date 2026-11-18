@@ -5,7 +5,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/shared/api/query-keys";
 
 import { employeesApi } from "../api/employees.api";
-import type { EmployeeQuery, EmployeeStatusSlug, EmployeeWritePayload } from "../types";
+import type {
+  EmployeeQuery,
+  EmployeeStatusSlug,
+  EmployeeWritePayload,
+} from "../types";
 
 export function useEmployees(query: EmployeeQuery = {}) {
   return useQuery({
@@ -19,10 +23,10 @@ export function useEmployees(query: EmployeeQuery = {}) {
  * and does not refetch. Opening the screen again loads the latest list.
  * Create, update, status changes, and delete also invalidate this cache.
  */
-export function useAllEmployees() {
+export function useAllEmployees(includeDeleted = false) {
   return useQuery({
-    queryKey: queryKeys.employees.directory(),
-    queryFn: () => employeesApi.listAll(),
+    queryKey: queryKeys.employees.directory(includeDeleted),
+    queryFn: () => employeesApi.listAll(includeDeleted),
     staleTime: Infinity,
     refetchOnMount: "always",
     refetchOnWindowFocus: false,
@@ -65,13 +69,8 @@ export function useCreateEmployee() {
 export function useUpdateEmployee() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      input,
-    }: {
-      id: number;
-      input: EmployeeWritePayload;
-    }) => employeesApi.update(id, input),
+    mutationFn: ({ id, input }: { id: number; input: EmployeeWritePayload }) =>
+      employeesApi.update(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.employees.all() });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
@@ -91,6 +90,12 @@ export function useSetEmployeeStatus() {
   });
 }
 
+/**
+ * DELETE /api/v1/employees/{id} is a soft delete (is_active=false,
+ * deleted_at=now). Every employee cache is refreshed except the deleted
+ * record's own detail — refetching it would fail while its page is still
+ * open and flash "not found" before the screen navigates away.
+ */
 export function useDeleteEmployee() {
   const queryClient = useQueryClient();
   return useMutation({

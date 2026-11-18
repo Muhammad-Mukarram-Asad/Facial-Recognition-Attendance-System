@@ -1,21 +1,37 @@
 import { z } from "zod";
 
-export const EMPLOYMENT_STATUSES = [
-  "Active",
-  "Probation",
-  "Contract",
-  "Suspended",
-] as const;
-
-/** PUT /api/v1/employees/{id}/status/{status_slug} */
+/**
+ * Workforce employment status (`employment_status`; `employee_status` on
+ * attendance payloads). Also the slugs for
+ * PUT /api/v1/employees/{id}/status/{status_slug}.
+ */
 export const EMPLOYEE_STATUS_SLUGS = [
   "active",
   "inactive",
-  "on-leave",
   "blacklisted",
+  "vip",
 ] as const;
 
 export type EmployeeStatusSlug = (typeof EMPLOYEE_STATUS_SLUGS)[number];
+
+export function toEmployeeStatusSlug(
+  value: string | null | undefined,
+): EmployeeStatusSlug | null {
+  const slug = value?.trim().toLowerCase();
+  return EMPLOYEE_STATUS_SLUGS.find((status) => status === slug) ?? null;
+}
+
+/** `is_active` that goes with a status: inactive is false, the rest true. */
+export function isActiveForStatus(status: EmployeeStatusSlug): boolean {
+  return status !== "inactive";
+}
+
+export const EMPLOYEE_DIVISIONS = [
+  "RIJA FASHIONS 1",
+  "RIJA FASHIONS 3",
+] as const;
+
+export type EmployeeDivision = (typeof EMPLOYEE_DIVISIONS)[number];
 
 export const employeeSchema = z.object({
   id: z.string(),
@@ -30,6 +46,8 @@ export const employeeSchema = z.object({
   designationId: z.number().nullable(),
   department: z.string(),
   departmentId: z.number().nullable(),
+  /** "" when the record has no division. */
+  division: z.string(),
   // shift: z.string(),
   // shiftId: z.number().nullable(),
   /** 24-hour HH:MM entered on the form. Empty when the record has no times. */
@@ -38,7 +56,7 @@ export const employeeSchema = z.object({
   employmentStatus: z.string(),
   phone: z.string(),
   cnic: z.string(),
-  joiningDate: z.string(),
+  hire_date: z.string(),
   // email: z.string(),
   // dateOfBirth: z.string(),
   // reportingManager: z.string(),
@@ -68,24 +86,24 @@ export const employeeInputSchema = z.object({
   attendanceCode: z.string().trim().min(1, "Attendance code is required"),
   employeeCode: z.string().trim().min(1, "Employee code is required"),
   cnic: z.string().optional().default(""),
-  joiningDate: z.string().optional().default(""),
+  hire_date: z.string().optional().default(""),
   // phone: z.string().optional().default(""),
   // email: z.string().email("Enter a valid email").or(z.literal("")).default(""),
   // dateOfBirth: z.string().optional().default(""),
   departmentId: z.coerce.number().min(0),
-  /** Select value: "" | "other" | department id. */
+  /** Select value: "" | department id. */
   departmentChoice: z.string(),
-  customDepartment: z.string(),
   designationId: z.coerce.number().min(0),
-  /** Select value: "" | "other" | designation id. */
+  /** Select value: "" | designation id. */
   designationChoice: z.string(),
-  customDesignation: z.string(),
   designation: z.string().optional().default(""),
   // shiftId: z.coerce.number().min(0),
   /** 24-hour HH:MM. */
   shiftStart: z.string(),
   shiftEnd: z.string(),
-  employmentStatus: z.enum(EMPLOYMENT_STATUSES),
+  /** "" means no division. */
+  division: z.union([z.enum(EMPLOYEE_DIVISIONS), z.literal("")]),
+  employmentStatus: z.enum(EMPLOYEE_STATUS_SLUGS),
   // reportingManager: z.string().optional().default(""),
   // gracePeriodMinutes: z.coerce.number().min(0).max(120),
   // gateCamera: z.string().optional().default(""),
@@ -102,32 +120,32 @@ export type EmployeeInput = z.infer<typeof employeeInputSchema>;
 /**
  * The `employee_data` JSON body the real /api/v1/employees endpoints
  * accept (POST to create, PUT to update), confirmed against a working
- * request payload — snake_case, `full_name`, separate attendance and
+ * request payload — snake_case, `first_name`, separate attendance and
  * employee codes, and `joining_date`. `id_card_no` is sent on update
  * only; the add form does not collect it.
  */
 export interface EmployeeWritePayload {
   /** Workforce primary key. Sent as an integer on update. */
   id?: number;
-  employee_code: string;
-  attendance_code: string;
-  full_name: string;
-  // first_name: string;
+  /** Create only — name and both codes are locked on edit. */
+  employee_code?: string;
+  attendance_code?: string;
+  /** TEMPORARY: carries the form's full name until first/last are split. */
+  first_name?: string;
   // last_name: string;
   department_id?: number | null;
-  /** Present when the form's department picker is Other. */
-  department_name?: string;
   designation_id?: number | null;
-  /** Present when the form's designation picker is Other. */
-  designation_name?: string;
-  shift_id?: number | null;
-  /** 24-hour HH:MM. Replaces a shift picked from the shifts catalog. */
-  shift_start_time: string;
-  shift_end_time: string;
-  employment_status: string;
-  is_active: boolean;
+  division?: EmployeeDivision | null;
+  /**
+   * 24-hour HH:MM. Both or neither. The backend resolves the shift from
+   * these times — `shift_id` is no longer sent.
+   */
+  shift_start_time?: string;
+  shift_end_time?: string;
+  employment_status?: EmployeeStatusSlug;
+  is_active?: boolean;
   /** yyyy-mm-dd. Omitted when the form leaves joining date blank. */
-  joining_date?: string;
+  hire_date?: string;
   /** Sent when editing an existing record. The add form does not collect it. */
   id_card_no?: string;
   // phone?: string;
@@ -146,11 +164,12 @@ export interface RealEmployeeRecord {
   first_name: string;
   last_name: string;
   full_name?: string;
-  joining_date?: string | null;
+  hire_date?: string | null;
   phone?: string | null;
   job_title?: string | null;
   department_id?: number | null;
   department_name?: string | null;
+  division?: string | null;
   designation_id?: number | null;
   designation_name?: string | null;
   shift_id?: number | null;
@@ -198,7 +217,10 @@ export function lastNameOrDash(lastName: string | null | undefined): string {
   return trimmed ? trimmed : "-";
 }
 
-export function employeeDisplayName(firstName: string, lastName: string): string {
+export function employeeDisplayName(
+  firstName: string,
+  lastName: string,
+): string {
   const first = firstName.trim();
   const last = lastName.trim();
   if (!last || last === "-") return first;
@@ -208,7 +230,8 @@ export function employeeDisplayName(firstName: string, lastName: string): string
 export function toEmployee(record: RealEmployeeRecord): Employee {
   const firstName = record.first_name?.trim() ?? "";
   const lastName = lastNameOrDash(record.last_name);
-  const fullName = record.full_name?.trim() || employeeDisplayName(firstName, lastName);
+  const fullName =
+    record.full_name?.trim() || employeeDisplayName(firstName, lastName);
   return {
     id: String(record.id ?? record.employee_code),
     employeeCode: record.employee_code,
@@ -217,20 +240,23 @@ export function toEmployee(record: RealEmployeeRecord): Employee {
     // firstName,
     // lastName,
     name: fullName,
-    designation: record.job_title?.trim() || record.designation_name?.trim() || "",
+    designation:
+      record.job_title?.trim() || record.designation_name?.trim() || "",
     designationId: record.designation_id ?? null,
     department:
       record.department_name?.trim() ||
       (record.department_id != null ? `Dept #${record.department_id}` : ""),
     departmentId: record.department_id ?? null,
+    division: record.division?.trim() ?? "",
     // shift: record.shift_id != null ? `Shift #${record.shift_id}` : "",
     // shiftId: record.shift_id ?? null,
     shiftStart: clockTime(record.shift_start_time),
     shiftEnd: clockTime(record.shift_end_time),
-    employmentStatus: record.employment_status ?? (record.is_active ? "active" : "inactive"),
+    employmentStatus:
+      record.employment_status ?? (record.is_active ? "active" : "inactive"),
     phone: record.phone ?? "",
     cnic: record.id_card_no ?? "",
-    joiningDate: toDateInput(record.joining_date),
+    hire_date: toDateInput(record.hire_date),
     createdAt: record.created_at ?? "",
     photoPath: record.photo_path?.trim() ? record.photo_path : null,
   };
@@ -250,16 +276,15 @@ export const EMPTY_EMPLOYEE: EmployeeInput = {
   attendanceCode: "",
   employeeCode: "",
   cnic: "",
-  joiningDate: "",
+  hire_date: "",
   // phone: "",
   departmentId: 0,
   departmentChoice: "",
-  customDepartment: "",
   designationId: 0,
   designationChoice: "",
-  customDesignation: "",
   designation: "",
   shiftStart: "",
   shiftEnd: "",
-  employmentStatus: "Active",
+  division: "",
+  employmentStatus: "active",
 };

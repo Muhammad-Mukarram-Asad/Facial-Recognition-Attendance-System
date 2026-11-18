@@ -14,6 +14,7 @@ import { useLiveAttendanceEvents } from '../hooks/useLiveAttendanceEvents';
 import { eventLabel, gateLabel } from '../lib/event-label';
 import { streamEventKey, type AttendanceStreamEvent } from '../types';
 import { EmployeePhotoModal, previewFromStreamEvent, type EmployeePhotoPreview } from './EmployeePhotoModal';
+import { EmployeeStatusBadge, isVipEvent } from './EmployeeStatusBadge';
 
 const DESKTOP_LIMIT = 12;
 const COMPACT_LIMIT = 9;
@@ -127,6 +128,8 @@ function RecentEvent({
 }) {
   const name = event.employee_name || `Employee #${event.employee_id}`;
   const isExit = event.event_type === 'exit';
+  // VIP arrivals stand out: red-tinted tile with a red outline.
+  const isVip = isVipEvent(event.employee_status);
 
   return (
     <div
@@ -135,12 +138,18 @@ function RecentEvent({
         flexDirection: 'column',
         minWidth: 0,
         borderRadius: 14,
-        background: 'var(--surface-subtle)',
+        background: isVip ? 'var(--priority-high-bg)' : 'var(--surface-subtle)',
+        boxShadow: isVip ? 'inset 0 0 0 2px var(--priority-high)' : undefined,
         overflow: 'hidden',
       }}
     >
       <GatePhoto event={event} name={name} onOpen={() => onOpen(event)} />
       <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3, padding: '10px 12px 12px' }}>
+        {event.employee_status ? (
+          <span style={{ display: 'flex', marginBottom: 2 }}>
+            <EmployeeStatusBadge status={event.employee_status} />
+          </span>
+        ) : null}
         <span
           style={{
             fontSize: 14,

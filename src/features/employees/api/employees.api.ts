@@ -63,11 +63,13 @@ export const employeesApi = {
     return { items, total: data.data.total ?? items.length };
   },
 
-  // GET /api/v1/employees/full — every employee, unfiltered. Search is
-  // applied to a local copy of this list, not by this request.
-  listAll: async (): Promise<EmployeeList> => {
+  // GET /api/v1/employees/full — every employee. Soft-deleted ones are
+  // left out unless `includeDeleted` is true. Search is applied to a local
+  // copy of this list, not by this request.
+  listAll: async (includeDeleted = false): Promise<EmployeeList> => {
     const { data } = await apiClient.get<EmployeesListResponse>(
       `${EMPLOYEES_API_URL}/full`,
+      { params: { include_deleted: includeDeleted } },
     );
     const items = data.data.employees.map(toEmployee);
     return { items, total: data.data.total ?? items.length };
@@ -117,8 +119,9 @@ export const employeesApi = {
 
   /**
    * PUT /api/v1/employees/{employee_id}/status/{status_slug}
-   * Slugs: active, inactive, on-leave, blacklisted. Updates
-   * employment_status and is_active. Requires employee.update.
+   * Slugs: active | inactive | blacklisted | vip. active sets is_active
+   * true, inactive sets it false, blacklisted/vip leave it unchanged.
+   * Requires employee.update.
    */
   setStatus: async (id: string, status: EmployeeStatusSlug): Promise<void> => {
     const recordId = Number(id);

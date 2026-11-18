@@ -10,9 +10,14 @@ import type { Designation } from '../types';
  * Fetches the full designation list once per session (requires auth, so
  * it's dispatched after sign-in / session rehydration — see authSlice and
  * StoreProvider). `condition` makes repeated dispatches no-ops once a
- * fetch has started or succeeded, so it truly only ever calls the API once.
+ * fetch has started or succeeded, so it only calls the API once — unless
+ * `force` is passed (after creating a designation), which always refetches.
  */
-export const fetchDesignations = createAsyncThunk<Designation[], void, { state: RootState }>(
+export const fetchDesignations = createAsyncThunk<
+  Designation[],
+  { force?: boolean } | void,
+  { state: RootState }
+>(
   'designations/fetch',
   async (_, { rejectWithValue }) => {
     try {
@@ -22,10 +27,29 @@ export const fetchDesignations = createAsyncThunk<Designation[], void, { state: 
     }
   },
   {
-    condition: (_, { getState }) => {
+    condition: (arg, { getState }) => {
+      if (arg?.force) return true;
       const { status } = getState().designations;
       return status !== 'loading' && status !== 'succeeded';
     },
+  },
+);
+
+/**
+ * POST /api/v1/designations with just a name, then refetches the full list so
+ * the store (and every dropdown reading it) includes the new designation.
+ * Resolves with the created designation.
+ */
+export const createDesignation = createAsyncThunk<Designation, string, { state: RootState }>(
+  'designations/create',
+  async (name, { dispatch, rejectWithValue }) => {
+    try {
+      const created = await designationsApi.create(name);
+      await dispatch(fetchDesignations({ force: true }));
+      return created;
+    } catch (error) {
+      return rejectWithValue(toApiError(error).message);
+    }
   },
 );
 
@@ -54,6 +78,14 @@ const designationsSlice = createSlice({
       .addCase(fetchDesignations.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.items = action.payload;
+      })
+      .addCase(createDesignation.fulfilled, (state, action) => {
+        // The refetch normally already includes it; this covers a refetch
+        // that failed after the create itself succeeded.
+        const created = action.payload;
+        if (created && !state.items.some((item) => item.id === created.id)) {
+          state.items.push(created);
+        }
       })
       .addCase(fetchDesignations.rejected, (state, action) => {
         state.status = 'failed';

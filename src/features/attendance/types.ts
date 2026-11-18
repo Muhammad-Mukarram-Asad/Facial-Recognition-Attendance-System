@@ -17,7 +17,10 @@ export const attendanceRegisterSchema = z.object({
         check_in: z.string().nullable(),
         check_out: z.string().nullable(),
         hours: z.number().nullable(),
+        /** Daily roll-up: present | absent. */
         status: z.string(),
+        /** Workforce HR slug: active | inactive | blacklisted | vip. */
+        employee_status: z.string().nullable().optional(),
         is_late: z.boolean(),
         is_early_departure: z.boolean(),
         image_path: z
@@ -52,6 +55,6 @@ export function startOfToday(): Date {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-// export const AttendanceStatus = z.enum(["present", "absent", "leave", "blacklisted", "pending", "incomplete"]);
-export const AttendanceStatus = z.enum(["present", "absent", "late", "blacklisted"]);
+/** Daily status — the only values the register's `status` query accepts. */
+export const AttendanceStatus = z.enum(["present", "absent"]);
 export type AttendanceStatus = z.infer<typeof AttendanceStatus>;

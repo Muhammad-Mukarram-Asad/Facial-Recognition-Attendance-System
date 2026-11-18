@@ -9,7 +9,7 @@ import type { AuthUser } from '../types';
 
 /**
  * Rehydrates the signed-in user on app load — see StoreProvider.
- * A network failure keeps the cached profile for the rest of the hour.
+ * A network failure keeps the cached profile for the rest of the session.
  * An expired or invalid token ends the session instead.
  */
 export const fetchCurrentUser = createAsyncThunk<AuthUser, void, { rejectValue: string }>(

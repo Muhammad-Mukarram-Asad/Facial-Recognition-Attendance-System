@@ -46,8 +46,10 @@ export const attendanceAnalyticsSchema = z.object({
 export type AttendanceAnalytics = z.infer<typeof attendanceAnalyticsSchema>["data"];
 
 /**
- * One gate event. Same six fields on GET /api/v1/attendance/events and on
+ * One gate event. Same fields on GET /api/v1/attendance/events and on
  * each `data:` frame from GET /api/v1/attendance/stream.
+ * `employee_status` is the workforce slug (active | inactive | blacklisted
+ * | vip); null or missing for strangers.
  */
 export const attendanceStreamEventSchema = z.object({
   employee_name: z.string().optional().default(''),
@@ -60,6 +62,11 @@ export const attendanceStreamEventSchema = z.object({
     .optional()
     .transform((value) => (value && value.length > 0 ? value : null)),
   event_type: z.string().optional().default(''),
+  employee_status: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => value?.trim().toLowerCase() || null),
 });
 
 /** GET /api/v1/attendance/events — newest first, last 24 hours. */

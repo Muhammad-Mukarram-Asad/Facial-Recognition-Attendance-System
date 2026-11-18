@@ -11,7 +11,7 @@ type SavedSession = {
 
 /**
  * Profile cached beside the token cookie. Redux is wiped on reload, and
- * GET /me can fail while the 1-hour cookie is still valid — this copy is
+ * GET /me can fail while the 2-hour cookie is still valid — this copy is
  * what keeps the console mounted across those reloads. Deadline is fixed
  * at sign-in; later profile refreshes must not push it forward.
  */
@@ -51,7 +51,7 @@ export function getSavedSessionExpiresAt(): number | null {
   return readRaw()?.expiresAt ?? null;
 }
 
-/** User for the current cookie, or null once the hour has passed. */
+/** User for the current cookie, or null once the 2 hours have passed. */
 export function readSavedSessionUser(): AuthUser | null {
   if (!getAuthToken()) {
     clearSavedSession();
