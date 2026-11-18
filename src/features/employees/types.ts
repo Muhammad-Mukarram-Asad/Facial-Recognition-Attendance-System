@@ -38,8 +38,6 @@ export const employeeSchema = z.object({
   employeeCode: z.string(),
   attendanceCode: z.string(),
   fullName: z.string(),
-  // firstName: z.string(),
-  // lastName: z.string(),
   /** Full name, for lists and avatars. */
   name: z.string(),
   designation: z.string(),
@@ -81,11 +79,8 @@ export const employeeListSchema = z.object({
 export const employeeInputSchema = z.object({
   id: z.number().optional(),
   fullName: z.string().trim().min(1, "Full name is required"),
-  // firstName: z.string().trim().min(1, "First name is required"),
-  // lastName: z.string().optional().default(""),
   attendanceCode: z.string().trim().min(1, "Attendance code is required"),
   employeeCode: z.string().trim().min(1, "Employee code is required"),
-  cnic: z.string().optional().default(""),
   hire_date: z.string().optional().default(""),
   // phone: z.string().optional().default(""),
   // email: z.string().email("Enter a valid email").or(z.literal("")).default(""),
@@ -120,9 +115,8 @@ export type EmployeeInput = z.infer<typeof employeeInputSchema>;
 /**
  * The `employee_data` JSON body the real /api/v1/employees endpoints
  * accept (POST to create, PUT to update), confirmed against a working
- * request payload — snake_case, `first_name`, separate attendance and
- * employee codes, and `joining_date`. `id_card_no` is sent on update
- * only; the add form does not collect it.
+ * request payload — snake_case, `full_name`, separate attendance and
+ * employee codes, and `joining_date`.
  */
 export interface EmployeeWritePayload {
   /** Workforce primary key. Sent as an integer on update. */
@@ -130,9 +124,7 @@ export interface EmployeeWritePayload {
   /** Create only — name and both codes are locked on edit. */
   employee_code?: string;
   attendance_code?: string;
-  /** TEMPORARY: carries the form's full name until first/last are split. */
-  first_name?: string;
-  // last_name: string;
+  full_name?: string;
   department_id?: number | null;
   designation_id?: number | null;
   division?: EmployeeDivision | null;
@@ -146,8 +138,6 @@ export interface EmployeeWritePayload {
   is_active?: boolean;
   /** yyyy-mm-dd. Omitted when the form leaves joining date blank. */
   hire_date?: string;
-  /** Sent when editing an existing record. The add form does not collect it. */
-  id_card_no?: string;
   // phone?: string;
 }
 
@@ -160,10 +150,8 @@ export interface EmployeeWritePayload {
 export interface RealEmployeeRecord {
   id?: number | string;
   employee_code: string;
-  attendance_code?: string;
-  first_name: string;
-  last_name: string;
-  full_name?: string;
+  attendance_code: string;
+  full_name: string;
   hire_date?: string | null;
   phone?: string | null;
   job_title?: string | null;
@@ -211,34 +199,13 @@ function toDateInput(value: string | null | undefined): string {
   return "";
 }
 
-/** A blank last name is shown and stored as a dash. */
-export function lastNameOrDash(lastName: string | null | undefined): string {
-  const trimmed = lastName?.trim() ?? "";
-  return trimmed ? trimmed : "-";
-}
-
-export function employeeDisplayName(
-  firstName: string,
-  lastName: string,
-): string {
-  const first = firstName.trim();
-  const last = lastName.trim();
-  if (!last || last === "-") return first;
-  return `${first} ${last}`.trim();
-}
-
 export function toEmployee(record: RealEmployeeRecord): Employee {
-  const firstName = record.first_name?.trim() ?? "";
-  const lastName = lastNameOrDash(record.last_name);
-  const fullName =
-    record.full_name?.trim() || employeeDisplayName(firstName, lastName);
+  const fullName = record.full_name?.trim();
   return {
     id: String(record.id ?? record.employee_code),
     employeeCode: record.employee_code,
     attendanceCode: record.attendance_code?.trim() ?? "",
     fullName,
-    // firstName,
-    // lastName,
     name: fullName,
     designation:
       record.job_title?.trim() || record.designation_name?.trim() || "",
@@ -271,13 +238,9 @@ export interface EmployeeQuery {
 
 export const EMPTY_EMPLOYEE: EmployeeInput = {
   fullName: "",
-  // firstName: "",
-  // lastName: "",
   attendanceCode: "",
   employeeCode: "",
-  cnic: "",
   hire_date: "",
-  // phone: "",
   departmentId: 0,
   departmentChoice: "",
   designationId: 0,

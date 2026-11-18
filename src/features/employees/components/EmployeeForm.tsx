@@ -54,11 +54,8 @@ function toInput(employee: Employee): EmployeeInput {
   return {
     ...EMPTY_EMPLOYEE,
     fullName: employee.fullName,
-    // firstName: employee.firstName,
-    // lastName: employee.lastName.trim() ? employee.lastName : "-",
     attendanceCode: employee.attendanceCode,
     employeeCode: employee.employeeCode,
-    cnic: digitsOnly(employee.cnic, CNIC_DIGIT_LIMIT),
     hire_date: employee.hire_date,
     departmentId: employee.departmentId ?? 0,
     departmentChoice: employee.departmentId
@@ -108,24 +105,10 @@ function toIsoDate(ddmmyyyy: string): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-/** Official CNIC is 13 digits. Dashes are display-only: 42101-1234567-8. */
-const CNIC_DIGIT_LIMIT = 13;
 // const PHONE_DIGIT_LIMIT = 11;
 const TIME_24 = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 type CatalogKind = "department" | "designation";
-
-function digitsOnly(raw: string, limit: number): string {
-  return raw.replace(/\D/g, "").slice(0, limit);
-}
-
-/** "4210112345678" -> "42101-1234567-8". Extra digits are dropped. */
-function formatCnic(raw: string): string {
-  const digits = digitsOnly(raw, CNIC_DIGIT_LIMIT);
-  if (digits.length <= 5) return digits;
-  if (digits.length <= 12) return `${digits.slice(0, 5)}-${digits.slice(5)}`;
-  return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
-}
 
 /** Auto-inserts "/" as digits are typed, capping at dd/mm/yyyy. */
 // function formatDateInput(raw: string): string {
@@ -154,17 +137,13 @@ function toIntegerId(value: string): number | null {
  *   false only for inactive; on update, set only by active (true) and
  *   inactive (false) — blacklisted/vip leave it as it is, same as the
  *   status slug route. (A status-only edit uses that route instead; see submit.)
- * - TEMPORARY: the single Full name input is sent as `first_name` until the
- *   form gets separate first/last name fields. id_card_no is included only
- *   when updating, because the add form does not collect CNIC.
+ * - The Full name input is sent as `full_name` on create.
  */
 function buildWritePayload(
   data: EmployeeInput,
   designationName: string | undefined,
   recordId?: number,
 ): EmployeeWritePayload {
-  // const lastName = data.lastName.trim();
-  const cnic = digitsOnly(data.cnic, CNIC_DIGIT_LIMIT);
   const isUpdate = recordId !== undefined;
   return {
     ...(recordId !== undefined ? { id: recordId } : {}),
@@ -174,9 +153,8 @@ function buildWritePayload(
       : {
           employee_code: data.employeeCode.trim(),
           attendance_code: data.attendanceCode.trim(),
-          first_name: data.fullName.trim(),
+          full_name: data.fullName.trim(),
         }),
-    // last_name: lastName && lastName !== "-" ? lastName : "-",
     ...(data.departmentChoice
       ? { department_id: Number(data.departmentChoice) }
       : {}),
@@ -195,7 +173,6 @@ function buildWritePayload(
         : {}
       : { is_active: isActiveForStatus(data.employmentStatus) }),
     ...(data.hire_date ? { joining_date: data.hire_date } : {}),
-    ...(recordId !== undefined && cnic ? { id_card_no: cnic } : {}),
     // phone: digitsOnly(data.phone, PHONE_DIGIT_LIMIT) || undefined,
   };
 }
@@ -866,20 +843,6 @@ export function EmployeeForm({
               onChange={set("fullName")}
               disabled={isEdit}
             />
-            {/* <TextField
-              label="First name *"
-              placeholder="Imran"
-              value={values.firstName}
-              error={errors.firstName}
-              onChange={set("firstName")}
-            />
-            <TextField
-              label="Last name"
-              placeholder="Qureshi"
-              value={values.lastName}
-              error={errors.lastName}
-              onChange={set("lastName")}
-            /> */}
             <TextField
               label="Attendance code *"
               mono
@@ -905,24 +868,6 @@ export function EmployeeForm({
               error={errors.hire_date}
               onChange={set("hire_date")}
             />
-            {isEdit && (
-              <TextField
-                label="CNIC / national ID"
-                mono
-                inputMode="numeric"
-                autoComplete="off"
-                placeholder="42101-1234567-8"
-                maxLength={15}
-                value={formatCnic(values.cnic)}
-                onChange={(event) => {
-                  setValues((prev) => ({
-                    ...prev,
-                    cnic: digitsOnly(event.target.value, CNIC_DIGIT_LIMIT),
-                  }));
-                  setSaved(false);
-                }}
-              />
-            )}
             {/* <TextField
               label="Mobile number"
               mono
