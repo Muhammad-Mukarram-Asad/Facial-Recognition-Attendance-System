@@ -1,4 +1,4 @@
-import { getValidated } from "@/shared/api/client";
+import { apiClient, getValidated } from "@/shared/api/client";
 
 import {
   attendanceRegisterSchema,
@@ -27,5 +27,23 @@ export const attendanceApi = {
     return getValidated("/attendance/attendance-full", attendanceRegisterSchema, { params }).then(
       (response) => response.data,
     );
+  },
+
+  /**
+   * GET /api/v1/attendance/generate-dat — TIS machine export for the same
+   * day as attendance-full. text/plain, one fixed-width line per check-in
+   * (0001) or check-out (0002) of each present employee. Returns the lines,
+   * without blanks; an empty array means nobody was present that day.
+   */
+  generateDat: async (timestamp: string): Promise<string[]> => {
+    const { data } = await apiClient.get<string>("/attendance/generate-dat", {
+      params: { timestamp },
+      responseType: "text",
+      headers: { Accept: "text/plain" },
+    });
+    return data
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
   },
 };

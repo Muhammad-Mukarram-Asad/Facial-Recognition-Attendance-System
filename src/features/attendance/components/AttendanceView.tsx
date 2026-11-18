@@ -1,8 +1,6 @@
 "use client";
 
 import { useCallback, useMemo, useState, type ReactNode } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import Papa from "papaparse";
 import { toast } from "sonner";
 
 import { DateRangeFilter } from "@/features/dashboard/components/DateRangeFilter";
@@ -13,13 +11,13 @@ import {
 import { streamPhotoUrl } from "@/features/dashboard/api/attendance-stream.api";
 import { useAllEmployees } from "@/features/employees/hooks/useEmployees";
 import { formatDate, orDash } from "@/shared/lib/format";
-import { queryKeys } from "@/shared/api/query-keys";
 import { useIsDesktop } from "@/shared/hooks/useMediaQuery";
 import { Avatar, Badge, Button, Card, EmptyState, Icon, SegmentedControl, SkeletonRows } from "@/shared/ui";
 import type { Tone } from "@/shared/types";
 
 import { attendanceApi, type AttendanceRegisterQuery } from "../api/attendance.api";
 import { useAttendanceRegister } from "../hooks/useAttendance";
+import { downloadAsDatFile } from "../lib/exportDat";
 import {
   AttendanceStatus,
   startOfToday,
@@ -51,20 +49,6 @@ const STATUS_FILTERS = [
 
 type StatusFilter = (typeof STATUS_FILTERS)[number]["value"];
 
-const CSV_COLUMNS = [
-  "Date",
-  "Employee",
-  "ID",
-  "Designation",
-  "Department",
-  "Check in",
-  "Check out",
-  "Hours",
-  "Status",
-  "Late",
-  "Early departure",
-] as const;
-
 /** Present and absent go out as `status`. All and blacklisted fetch every row. */
 function filterToQuery(timestamp: string, filter: StatusFilter): AttendanceRegisterQuery {
   if (filter === "present" || filter === "absent") {
@@ -92,50 +76,12 @@ function statusLabel(status: string): string {
   return status.replace(/_/g, " ");
 }
 
-function csvCell(value: string | null | undefined): string {
-  return value && value.length > 0 ? value : "";
-}
-
+/** attendance-2026-04-21.dat for the picked calendar day. */
 function exportFilename(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-  return `attendance-${year}-${month}-${day}.csv`;
-}
-
-/** Writes the full register (every row the API returned) to a UTF-8 CSV and downloads it. */
-function downloadAttendanceCsv(date: Date, records: AttendanceRecord[]) {
-  const csv = Papa.unparse(
-    records.map((record) => ({
-      Date: formatDate(date),
-      Employee: record.name,
-      ID: record.employee_id,
-      Designation: csvCell(record.designation),
-      Department: csvCell(record.department),
-      "Check in": record.check_in ? formatRecordTime(record.check_in) : "",
-      "Check out": record.check_out ? formatRecordTime(record.check_out) : "",
-      Hours: record.hours == null ? "" : String(record.hours),
-      Status: statusLabel(record.status),
-      Late: yesNo(record.is_late),
-      "Early departure": yesNo(record.is_early_departure),
-    })),
-    {
-      columns: [...CSV_COLUMNS],
-      newline: "\r\n",
-      quotes: true,
-      escapeFormulae: true,
-    },
-  );
-
-  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = exportFilename(date);
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
+  return `attendance-${year}-${month}-${day}.dat`;
 }
 
 const ATTENDANCE_TIME_ZONE = "Asia/Karachi";
@@ -169,7 +115,6 @@ function copyRegister(data: AttendanceRegister): AttendanceRegister {
 }
 
 export function AttendanceView() {
-  const queryClient = useQueryClient();
   const isDesktop = useIsDesktop();
   const [date, setDate] = useState(startOfToday);
   const [search, setSearch] = useState("");
@@ -252,24 +197,22 @@ export function AttendanceView() {
   const rangeStart = pageRecords.length > 0 ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
   const rangeEnd = pageRecords.length > 0 ? rangeStart + pageRecords.length - 1 : 0;
 
+  /** TIS .dat export of the picked day (present employees only). */
   const exportRecords = useCallback(async () => {
     setExporting(true);
     try {
-      const data = await queryClient.query({
-        queryKey: queryKeys.attendance.register(timestamp),
-        queryFn: () => attendanceApi.register({ timestamp }),
-      });
-      if (data.records.length === 0) {
-        toast.error("No attendance records to export for this day.");
+      const lines = await attendanceApi.generateDat(timestamp);
+      if (lines.length === 0) {
+        toast.error("No present attendance to export for this day.");
         return;
       }
-      downloadAttendanceCsv(date, data.records);
+      downloadAsDatFile(lines, exportFilename(date));
     } catch {
       toast.error("Could not export attendance records.");
     } finally {
       setExporting(false);
     }
-  }, [date, queryClient, timestamp]);
+  }, [date, timestamp]);
 
   const selectPage = (next: number) => {
     const clicked = Math.min(Math.max(1, next), pageCount);
@@ -328,7 +271,7 @@ export function AttendanceView() {
             loading={exporting}
             onClick={() => void exportRecords()}
           >
-            Export CSV
+            Export DAT
           </Button>
         </div>
         <div style={{ overflowX: "auto" }}>
