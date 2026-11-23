@@ -1,4 +1,5 @@
 import type { EmployeeQuery } from "@/features/employees/types";
+import type { UserListQuery } from "@/features/users/types";
 
 /**
  * Centralised query keys. Keeping them in one factory stops
@@ -28,5 +29,9 @@ export const queryKeys = {
       ["employees", "directory", { includeDeleted }] as const,
     detail: (id: string) => ["employees", "detail", id] as const,
     recent: () => ["employees", "recent"] as const,
+  },
+  users: {
+    all: () => ["users"] as const,
+    list: (query: UserListQuery) => ["users", "list", query] as const,
   },
 } as const;

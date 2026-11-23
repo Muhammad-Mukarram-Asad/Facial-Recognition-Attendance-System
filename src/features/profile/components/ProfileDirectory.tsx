@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { useCan } from "@/features/auth/hooks/usePermission";
 import { useDepartments } from "@/features/departments/hooks/useDepartments";
 import type { Department } from "@/features/departments/types";
 import { employeePhotoUrl } from "@/features/employees/api/employees.api";
 import { useAllEmployees } from "@/features/employees/hooks/useEmployees";
 import type { Employee } from "@/features/employees/types";
+import { PERMISSIONS } from "@/shared/config/permissions";
 import { ROUTES } from "@/shared/config/routes";
 import {
   Avatar,
@@ -64,6 +66,8 @@ function employeeDeptLabel(departments: Department[], departmentId: number): str
  * of that list in the browser. Opening one goes to its edit screen.
  */
 export function ProfileDirectory() {
+  const canUpdate = useCan(PERMISSIONS.employeeUpdate);
+  const canDelete = useCan(PERMISSIONS.employeeDelete);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const { items: departments } = useDepartments();
@@ -114,7 +118,11 @@ export function ProfileDirectory() {
           Employees
         </h2>
         <p style={{ margin: 0, fontSize: 13.5, color: "var(--text-muted)" }}>
-          Open a record to edit its details or remove the employee.
+          {canUpdate && canDelete
+            ? "Open a record to edit its details or remove the employee."
+            : canUpdate
+              ? "Open a record to edit its details."
+              : "Open a record to view its details. Changes are limited to administrators."}
         </p>
       </div>
 

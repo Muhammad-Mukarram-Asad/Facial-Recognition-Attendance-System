@@ -53,10 +53,10 @@ apiClient.interceptors.response.use(
 export function toApiError(error: unknown): ApiError {
   if (error instanceof AxiosError) {
     const payload = error.response?.data as
-      | { message?: string; code?: string }
+      | { message?: string; code?: string; detail?: unknown }
       | undefined;
     return {
-      message: payload?.message ?? error.message,
+      message: readErrorMessage(payload) ?? error.message,
       status: error.response?.status,
       code: payload?.code ?? error.code,
     };
@@ -89,6 +89,28 @@ export async function postValidated<T>(
   return schema.parse(data);
 }
 
+function readErrorMessage(
+  payload: { message?: string; detail?: unknown } | undefined,
+): string | undefined {
+  if (!payload) return undefined;
+  if (typeof payload.message === "string" && payload.message.trim()) return payload.message;
+  if (typeof payload.detail === "string" && payload.detail.trim()) return payload.detail;
+  if (Array.isArray(payload.detail)) {
+    const parts = payload.detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "msg" in item) {
+          const msg = (item as { msg?: unknown }).msg;
+          return typeof msg === "string" ? msg : "";
+        }
+        return "";
+      })
+      .filter(Boolean);
+    if (parts.length > 0) return parts.join(". ");
+  }
+  return undefined;
+}
+
 export async function patchValidated<T>(
   url: string,
   schema: ZodType<T>,
@@ -96,6 +118,16 @@ export async function patchValidated<T>(
   config?: AxiosRequestConfig,
 ): Promise<T> {
   const { data } = await apiClient.patch(url, body, config);
+  return schema.parse(data);
+}
+
+export async function putValidated<T>(
+  url: string,
+  schema: ZodType<T>,
+  body?: unknown,
+  config?: AxiosRequestConfig,
+): Promise<T> {
+  const { data } = await apiClient.put(url, body, config);
   return schema.parse(data);
 }
 

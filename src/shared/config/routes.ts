@@ -1,3 +1,5 @@
+import { PERMISSIONS } from "@/shared/config/permissions";
+
 /** Every sidebar destination is its own App Router route. */
 export const ROUTES = {
   signIn: "/sign-in",
@@ -6,6 +8,7 @@ export const ROUTES = {
   employees: "/employees",
   profile: "/employee-profile",
   profileFor: (id: string) => `/employee-profile/${id}`,
+  users: "/users",
 } as const;
 
 export interface NavItem {
@@ -13,6 +16,8 @@ export interface NavItem {
   label: string;
   icon: string;
   href: string;
+  /** When set, the item is hidden unless the signed-in role includes it. */
+  permission?: string;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -39,6 +44,14 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Add Employee",
     icon: "user-round-plus",
     href: ROUTES.employees,
+    permission: PERMISSIONS.employeeCreate,
+  },
+  {
+    id: "users",
+    label: "Users",
+    icon: "shield",
+    href: ROUTES.users,
+    permission: PERMISSIONS.userList,
   },
 ];
 
@@ -48,4 +61,5 @@ export const PAGE_META: Record<string, { crumb: string; title: string }> = {
   [ROUTES.attendance]: { crumb: "Attendance", title: "Daily records" },
   [ROUTES.employees]: { crumb: "Workforce", title: "Add employee" },
   [ROUTES.profile]: { crumb: "Workforce", title: "Employees" },
+  [ROUTES.users]: { crumb: "Access", title: "Users" },
 };

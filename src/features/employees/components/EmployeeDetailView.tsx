@@ -2,6 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 
+import { useCan } from '@/features/auth/hooks/usePermission';
+import { PERMISSIONS } from '@/shared/config/permissions';
 import { ROUTES } from '@/shared/config/routes';
 import { Button, Card, EmptyState } from '@/shared/ui';
 
@@ -12,13 +14,14 @@ import { EmployeeForm } from './EmployeeForm';
 import { FaceEnrollmentCard } from './FaceEnrollmentCard';
 
 /**
- * Employee record screen — the same enrollment form as /employees, prefilled
- * for editing, with blacklist and delete alongside it. Landed on from the
- * employee list; saving or deleting sends the admin back there with the
- * roster refreshed. Blacklisting stays on this page and marks the record.
+ * Employee record screen — the same enrollment form as /employees.
+ * Roles with employee.update can edit; roles with employee.delete can remove.
+ * Everyone else sees the record with those controls hidden.
  */
 export function EmployeeDetailView({ id }: { id: string }) {
   const router = useRouter();
+  const canUpdate = useCan(PERMISSIONS.employeeUpdate);
+  const canDelete = useCan(PERMISSIONS.employeeDelete);
   const { data: employee, isPending, isError } = useEmployeeDetail(id);
 
   const backToList = () => router.push(ROUTES.profile);
@@ -44,7 +47,13 @@ export function EmployeeDetailView({ id }: { id: string }) {
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'stretch' }}>
-      <EmployeeForm employee={employee} onSaved={backToList} onDeleted={backToList} />
+      <EmployeeForm
+        employee={employee}
+        readOnly={!canUpdate}
+        canDelete={canDelete}
+        onSaved={backToList}
+        onDeleted={backToList}
+      />
       <div
         style={{
           flex: '1 1 280px',
@@ -55,7 +64,10 @@ export function EmployeeDetailView({ id }: { id: string }) {
           flexDirection: 'column',
         }}
       >
-        <FaceEnrollmentCard existingPhotoUrl={employeePhotoUrl(employee.photoPath)} />
+        <FaceEnrollmentCard
+          readOnly={!canUpdate}
+          existingPhotoUrl={employeePhotoUrl(employee.photoPath)}
+        />
       </div>
     </div>
   );

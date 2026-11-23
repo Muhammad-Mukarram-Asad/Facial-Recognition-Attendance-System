@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { useCan } from "@/features/auth/hooks/usePermission";
 import { toApiError } from "@/shared/api/client";
+import { PERMISSIONS } from "@/shared/config/permissions";
 import { Badge, Button, Card, Icon, SelectField, TextField } from "@/shared/ui";
 
 import { useAppDispatch } from "@/shared/store/hooks";
@@ -246,11 +248,13 @@ function TimeField({
   label,
   value,
   error,
+  disabled,
   onChange,
 }: {
   label: string;
   value: string;
   error?: string;
+  disabled?: boolean;
   onChange: (hour: string, minute: string) => void;
 }) {
   const [hour = "", minute = ""] = value.split(":");
@@ -279,6 +283,7 @@ function TimeField({
           value={
             HOUR_OPTIONS.some((option) => option.value === hour) ? hour : ""
           }
+          disabled={disabled}
           onChange={(event) => onChange(event.target.value, minute)}
           style={error ? { borderColor: "var(--priority-high)" } : undefined}
         />
@@ -297,6 +302,7 @@ function TimeField({
               ? minute
               : ""
           }
+          disabled={disabled}
           onChange={(event) => onChange(hour, event.target.value)}
           style={error ? { borderColor: "var(--priority-high)" } : undefined}
         />
@@ -344,6 +350,8 @@ function CatalogField({
   items,
   choice,
   error,
+  disabled,
+  allowOther = true,
   onChange,
   onOther,
 }: {
@@ -354,6 +362,8 @@ function CatalogField({
   items: readonly { id: number; name: string }[];
   choice: string;
   error?: string;
+  disabled?: boolean;
+  allowOther?: boolean;
   onChange: (choice: string) => void;
   onOther: () => void;
 }) {
@@ -388,7 +398,10 @@ function CatalogField({
           type="button"
           aria-haspopup="listbox"
           aria-expanded={open}
-          onClick={() => setOpen((current) => !current)}
+          disabled={disabled}
+          onClick={() => {
+            if (!disabled) setOpen((current) => !current);
+          }}
           style={{
             ...catalogControl(Boolean(error)),
             display: "block",
@@ -399,7 +412,8 @@ function CatalogField({
             color: showingPlaceholder
               ? "var(--text-muted)"
               : "var(--text-strong)",
-            cursor: "pointer",
+            cursor: disabled ? "not-allowed" : "pointer",
+            opacity: disabled ? 0.7 : 1,
           }}
         >
           {selectedLabel}
@@ -419,7 +433,7 @@ function CatalogField({
         >
           <Icon name="chevron-down" size={16} />
         </span>
-        {open && (
+        {open && !disabled && (
           <ul
             role="listbox"
             aria-label={label}
@@ -440,14 +454,16 @@ function CatalogField({
               overflowY: "auto",
             }}
           >
-            <CatalogOption
-              label="Other"
-              selected={false}
-              onPick={() => {
-                setOpen(false);
-                onOther();
-              }}
-            />
+            {allowOther && (
+              <CatalogOption
+                label="Other"
+                selected={false}
+                onPick={() => {
+                  setOpen(false);
+                  onOther();
+                }}
+              />
+            )}
             {items.map((item) => (
               <CatalogOption
                 key={item.id}
@@ -525,6 +541,10 @@ export interface EmployeeFormProps {
   employee?: Employee;
   /** The face photo picked in FaceEnrollmentCard — required to create. */
   photoFile?: File | null;
+  /** View the record without save controls. Used when the role lacks employee.update. */
+  readOnly?: boolean;
+  /** Show delete. Independent of readOnly so a role could remove without editing. */
+  canDelete?: boolean;
   /** Fired once the record has been saved (create or update) or deleted. */
   onSaved?: () => void;
   onDeleted?: () => void;
@@ -533,10 +553,14 @@ export interface EmployeeFormProps {
 export function EmployeeForm({
   employee,
   photoFile,
+  readOnly = false,
+  canDelete = false,
   onSaved,
   onDeleted,
 }: EmployeeFormProps) {
   const isEdit = Boolean(employee);
+  const canCreateDepartment = useCan(PERMISSIONS.departmentCreate);
+  const canCreateDesignation = useCan(PERMISSIONS.designationCreate);
   const create = useCreateEmployee();
   const update = useUpdateEmployee();
   const setStatus = useSetEmployeeStatus();
@@ -636,6 +660,7 @@ export function EmployeeForm({
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
+    if (readOnly) return;
     const fieldErrors = employmentFieldErrors(values);
     const parsed = employeeInputSchema.safeParse(values);
     if (!parsed.success || Object.keys(fieldErrors).length > 0) {
@@ -805,17 +830,19 @@ export function EmployeeForm({
                 letterSpacing: "-0.02em",
               }}
             >
-              {isEdit ? "Edit employee" : "Add employee"}
+              {readOnly ? "Employee" : isEdit ? "Edit employee" : "Add employee"}
             </h2>
             <p
               style={{ margin: 0, fontSize: 13.5, color: "var(--text-muted)" }}
             >
-              {isEdit
-                ? "Update the record below. Name, employee code and attendance code can't be changed."
-                : "Fields marked with an asterisk are required for gate matching."}
+              {readOnly
+                ? "View only. This role cannot change or remove employee records."
+                : isEdit
+                  ? "Update the record below. Name, employee code and attendance code can't be changed."
+                  : "Fields marked with an asterisk are required for gate matching."}
             </p>
           </div>
-          {(!isEdit || hasChanges || saved) && (
+          {!readOnly && (!isEdit || hasChanges || saved) && (
             <Badge
               tone={saved && !hasChanges ? "success" : "brand"}
               dot={saved && !hasChanges}
@@ -867,6 +894,7 @@ export function EmployeeForm({
               value={values.hire_date}
               error={errors.hire_date}
               onChange={set("hire_date")}
+              disabled={readOnly}
             />
             {/* <TextField
               label="Mobile number"
@@ -930,6 +958,8 @@ export function EmployeeForm({
               items={departments.items}
               choice={values.departmentChoice}
               error={errors.departmentChoice}
+              disabled={readOnly}
+              allowOther={!readOnly && canCreateDepartment}
               onChange={updateCatalog("department")}
               onOther={() => setAddingKind("department")}
             />
@@ -947,6 +977,8 @@ export function EmployeeForm({
               items={designations.items}
               choice={values.designationChoice}
               error={errors.designationChoice}
+              disabled={readOnly}
+              allowOther={!readOnly && canCreateDesignation}
               onChange={updateCatalog("designation")}
               onOther={() => setAddingKind("designation")}
             />
@@ -954,24 +986,28 @@ export function EmployeeForm({
               label="Division"
               options={DIVISION_OPTIONS}
               value={values.division}
+              disabled={readOnly}
               onChange={set("division")}
             />
             <SelectField
               label="Employee status"
               options={STATUS_OPTIONS}
               value={values.employmentStatus}
+              disabled={readOnly}
               onChange={set("employmentStatus")}
             />
             <TimeField
               label="Start time"
               value={values.shiftStart}
               error={errors.shiftStart}
+              disabled={readOnly}
               onChange={setTime("shiftStart")}
             />
             <TimeField
               label="End time"
               value={values.shiftEnd}
               error={errors.shiftEnd || liveShiftOrderError}
+              disabled={readOnly}
               onChange={setTime("shiftEnd")}
             />
           </div>
@@ -1068,6 +1104,7 @@ export function EmployeeForm({
           </div>
         </div> */}
 
+        {((!readOnly && (!isEdit || hasChanges)) || (isEdit && canDelete)) && (
         <div
           style={{
             display: "flex",
@@ -1080,29 +1117,36 @@ export function EmployeeForm({
         >
           {isEdit ? (
             <>
-              {hasChanges && (
+              {!readOnly && hasChanges && (
                 <Button type="submit" icon="check" loading={savingEdit}>
                   Update changes
                 </Button>
               )}
-              <span style={{ flex: 1, minWidth: 0 }} />
-              <Button
-                type="button"
-                variant="danger"
-                icon="trash"
-                onClick={handleDelete}
-                loading={remove.isPending}
-                disabled={savingEdit}
-              >
-                Delete employee
-              </Button>
+              {canDelete && (
+                <>
+                  <span style={{ flex: 1, minWidth: 0 }} />
+                  <Button
+                    type="button"
+                    variant="danger"
+                    icon="trash"
+                    onClick={handleDelete}
+                    loading={remove.isPending}
+                    disabled={savingEdit}
+                  >
+                    Delete employee
+                  </Button>
+                </>
+              )}
             </>
           ) : (
-            <Button type="submit" icon="check" loading={create.isPending}>
-              Save employee
-            </Button>
+            !readOnly && (
+              <Button type="submit" icon="check" loading={create.isPending}>
+                Save employee
+              </Button>
+            )
           )}
         </div>
+        )}
       </form>
       {addingKind && (
         <AddCatalogItemModal

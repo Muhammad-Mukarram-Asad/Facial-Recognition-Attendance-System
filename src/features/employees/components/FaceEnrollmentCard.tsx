@@ -11,6 +11,8 @@ export interface FaceEnrollmentCardProps {
   onFileChange?: (file: File | null) => void;
   /** Saved enrollment photo for this employee. Shown until a new file is picked. */
   existingPhotoUrl?: string | null;
+  /** Hide upload controls when the role cannot change the employee. */
+  readOnly?: boolean;
 }
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png"];
@@ -21,6 +23,7 @@ const PICKER_SPINNER_MAX_MS = 8000;
 export function FaceEnrollmentCard({
   onFileChange,
   existingPhotoUrl = null,
+  readOnly = false,
 }: FaceEnrollmentCardProps = {}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [localPhotoUrl, setLocalPhotoUrl] = useState<string | null>(null);
@@ -209,35 +212,39 @@ export function FaceEnrollmentCard({
         )}
       </div>
 
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png"
-        hidden
-        onChange={handleFile}
-      />
+      {!readOnly && (
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png"
+          hidden
+          onChange={handleFile}
+        />
+      )}
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <Button
-          variant="brand"
-          size="sm"
-          icon="upload"
-          loading={openingPicker}
-          onClick={openPicker}
-        >
-          {photoUrl ? "Update photo" : "Upload photo"}
-        </Button>
-        {localPhotoUrl && (
+      {!readOnly && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Button
-            variant="secondary"
+            variant="brand"
             size="sm"
-            icon="trash"
-            onClick={clearPhoto}
+            icon="upload"
+            loading={openingPicker}
+            onClick={openPicker}
           >
-            Remove
+            {photoUrl ? "Update photo" : "Upload photo"}
           </Button>
-        )}
-      </div>
+          {localPhotoUrl && (
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="trash"
+              onClick={clearPhoto}
+            >
+              Remove
+            </Button>
+          )}
+        </div>
+      )}
 
       <p
         style={{
@@ -247,8 +254,9 @@ export function FaceEnrollmentCard({
           color: "var(--text-faint)",
         }}
       >
-        Use a clear, front-facing photo with one visible face. The required
-        formats are JPG or PNG only.
+        {readOnly
+          ? "Enrollment photo on file. This role cannot replace it."
+          : "Use a clear, front-facing photo with one visible face. The required formats are JPG or PNG only."}
       </p>
     </Card>
   );

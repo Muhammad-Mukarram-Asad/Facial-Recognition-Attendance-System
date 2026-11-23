@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { useSession, useSignOut } from "@/features/auth/hooks/useSession";
+import { formatRoleName } from "@/features/auth/lib/role-label";
 import { APP_CONFIG } from "@/shared/config/app";
+import { hasPermission } from "@/shared/config/permissions";
 import { NAV_ITEMS } from "@/shared/config/routes";
 import { initials } from "@/shared/lib/format";
 import { Icon } from "@/shared/ui";
@@ -65,7 +67,9 @@ export function Sidebar({ variant = "rail", onNavigate }: SidebarProps) {
           minHeight: 0,
         }}
       >
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter(
+          (item) => !item.permission || hasPermission(session?.user.role.permissions, item.permission),
+        ).map((item) => {
           const active =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
@@ -158,7 +162,9 @@ export function Sidebar({ variant = "rail", onNavigate }: SidebarProps) {
                 textOverflow: "ellipsis",
               }}
             >
-              {session?.user.email ?? ""}
+              {session?.user.role
+                ? `${formatRoleName(session.user.role.name)} · ${session.user.email ?? ""}`
+                : (session?.user.email ?? "")}
             </span>
           </div>
           <button
