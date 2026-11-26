@@ -26,6 +26,17 @@ export function isActiveForStatus(status: EmployeeStatusSlug): boolean {
   return status !== "inactive";
 }
 
+/** Pakistani CNIC: 13 digits, shown as 12345-1234567-1. */
+export const CNIC_PATTERN = /^\d{5}-\d{7}-\d$/;
+
+/** Formats as digits are typed: 12345-1234567-1, capped at 13 digits. */
+export function formatCnic(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 13);
+  if (digits.length > 12) return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
+  if (digits.length > 5) return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  return digits;
+}
+
 export const EMPLOYEE_DIVISIONS = [
   "RIJA FASHIONS 1",
   "RIJA FASHIONS 3",
@@ -52,6 +63,8 @@ export const employeeSchema = z.object({
   shiftStart: z.string(),
   shiftEnd: z.string(),
   employmentStatus: z.string(),
+  /** HR note stored when the employee was blacklisted; "" when none. */
+  blacklistReason: z.string(),
   phone: z.string(),
   cnic: z.string(),
   hire_date: z.string(),
@@ -81,6 +94,13 @@ export const employeeInputSchema = z.object({
   fullName: z.string().trim().min(1, "Full name is required"),
   attendanceCode: z.string().trim().min(1, "Attendance code is required"),
   employeeCode: z.string().trim().min(1, "Employee code is required"),
+  /** Optional; when given it must be a full 13-digit CNIC. */
+  cnic: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || CNIC_PATTERN.test(value), {
+      message: "Enter all 13 digits (12345-1234567-1)",
+    }),
   hire_date: z.string().optional().default(""),
   // phone: z.string().optional().default(""),
   // email: z.string().email("Enter a valid email").or(z.literal("")).default(""),
@@ -116,7 +136,7 @@ export type EmployeeInput = z.infer<typeof employeeInputSchema>;
  * The `employee_data` JSON body the real /api/v1/employees endpoints
  * accept (POST to create, PUT to update), confirmed against a working
  * request payload — snake_case, `full_name`, separate attendance and
- * employee codes, and `joining_date`.
+ * employee codes, and `hire_date`.
  */
 export interface EmployeeWritePayload {
   /** Workforce primary key. Sent as an integer on update. */
@@ -125,6 +145,8 @@ export interface EmployeeWritePayload {
   employee_code?: string;
   attendance_code?: string;
   full_name?: string;
+  /** CNIC. Editable until the record has one, then locked in the form. */
+  id_card_no?: string;
   department_id?: number | null;
   designation_id?: number | null;
   division?: EmployeeDivision | null;
@@ -135,8 +157,13 @@ export interface EmployeeWritePayload {
   shift_start_time?: string;
   shift_end_time?: string;
   employment_status?: EmployeeStatusSlug;
+  /**
+   * HR note for blacklisting. A string sets/updates it, `null` clears it,
+   * omitted leaves it unchanged. Required by the form when blacklisting.
+   */
+  blacklist_reason?: string | null;
   is_active?: boolean;
-  /** yyyy-mm-dd. Omitted when the form leaves joining date blank. */
+  /** yyyy-mm-dd. Create only (locked on edit); omitted when left blank. */
   hire_date?: string;
   // phone?: string;
 }
@@ -165,6 +192,7 @@ export interface RealEmployeeRecord {
   shift_end_time?: string | null;
   user_id?: number | null;
   employment_status?: string | null;
+  blacklist_reason?: string | null;
   is_active?: boolean;
   photo_path?: string | null;
   has_face_embedding?: boolean;
@@ -194,7 +222,7 @@ function toDateInput(value: string | null | undefined): string {
   const trimmed = value.trim();
   const iso = /^(\d{4}-\d{2}-\d{2})/.exec(trimmed);
   if (iso) return iso[1];
-  const dmy = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmed);
+  const dmy = /^(\d{2})[/-](\d{2})[/-](\d{4})$/.exec(trimmed);
   if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
   return "";
 }
@@ -221,6 +249,7 @@ export function toEmployee(record: RealEmployeeRecord): Employee {
     shiftEnd: clockTime(record.shift_end_time),
     employmentStatus:
       record.employment_status ?? (record.is_active ? "active" : "inactive"),
+    blacklistReason: record.blacklist_reason?.trim() ?? "",
     phone: record.phone ?? "",
     cnic: record.id_card_no ?? "",
     hire_date: toDateInput(record.hire_date),
@@ -240,6 +269,7 @@ export const EMPTY_EMPLOYEE: EmployeeInput = {
   fullName: "",
   attendanceCode: "",
   employeeCode: "",
+  cnic: "",
   hire_date: "",
   departmentId: 0,
   departmentChoice: "",

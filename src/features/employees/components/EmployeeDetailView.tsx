@@ -1,17 +1,19 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 
-import { useCan } from '@/features/auth/hooks/usePermission';
-import { PERMISSIONS } from '@/shared/config/permissions';
-import { ROUTES } from '@/shared/config/routes';
-import { Button, Card, EmptyState } from '@/shared/ui';
+import { useCan } from "@/features/auth/hooks/usePermission";
+import { PERMISSIONS } from "@/shared/config/permissions";
+import { ROUTES } from "@/shared/config/routes";
+import { Button, Card, EmptyState } from "@/shared/ui";
 
-import { employeePhotoUrl } from '../api/employees.api';
-import { useEmployeeDetail } from '../hooks/useEmployees';
-import { EmployeeDetailLoading } from './EmployeeDetailLoading';
-import { EmployeeForm } from './EmployeeForm';
-import { FaceEnrollmentCard } from './FaceEnrollmentCard';
+import { employeePhotoUrl } from "../api/employees.api";
+import { toEmployeeStatusSlug } from "../types";
+import { useEmployeeDetail } from "../hooks/useEmployees";
+import { BlacklistNotice } from "./BlacklistNotice";
+import { EmployeeDetailLoading } from "./EmployeeDetailLoading";
+import { EmployeeForm } from "./EmployeeForm";
+import { FaceEnrollmentCard } from "./FaceEnrollmentCard";
 
 /**
  * Employee record screen — the same enrollment form as /employees.
@@ -34,7 +36,13 @@ export function EmployeeDetailView({ id }: { id: string }) {
           icon="user-round-x"
           hint="They may have been removed from the roster."
         />
-        <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 24 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            paddingBottom: 24,
+          }}
+        >
           <Button size="sm" icon="arrow-left" onClick={backToList}>
             Back to employees
           </Button>
@@ -45,29 +53,44 @@ export function EmployeeDetailView({ id }: { id: string }) {
 
   if (isPending || !employee) return <EmployeeDetailLoading />;
 
+  const blacklisted =
+    toEmployeeStatusSlug(employee.employmentStatus) === "blacklisted";
+
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'stretch' }}>
-      <EmployeeForm
-        employee={employee}
-        readOnly={!canUpdate}
-        canDelete={canDelete}
-        onSaved={backToList}
-        onDeleted={backToList}
-      />
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {blacklisted ? (
+        <BlacklistNotice reason={employee.blacklistReason} />
+      ) : null}
       <div
         style={{
-          flex: '1 1 280px',
-          minWidth: 0,
-          minHeight: 0,
-          alignSelf: 'stretch',
-          display: 'flex',
-          flexDirection: 'column',
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 16,
+          alignItems: "stretch",
         }}
       >
-        <FaceEnrollmentCard
+        <EmployeeForm
+          employee={employee}
           readOnly={!canUpdate}
-          existingPhotoUrl={employeePhotoUrl(employee.photoPath)}
+          canDelete={canDelete}
+          onSaved={backToList}
+          onDeleted={backToList}
         />
+        <div
+          style={{
+            flex: "1 1 280px",
+            minWidth: 0,
+            minHeight: 0,
+            alignSelf: "stretch",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <FaceEnrollmentCard
+            readOnly={!canUpdate}
+            existingPhotoUrl={employeePhotoUrl(employee.photoPath)}
+          />
+        </div>
       </div>
     </div>
   );

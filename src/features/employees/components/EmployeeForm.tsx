@@ -16,6 +16,7 @@ import { useDesignations } from "@/features/designations/hooks/useDesignations";
 import { createDesignation } from "@/features/designations/store/designationsSlice";
 
 import { AddCatalogItemModal } from "./AddCatalogItemModal";
+import { BlacklistReasonModal } from "./BlacklistReasonModal";
 
 import {
   useCreateEmployee,
@@ -27,6 +28,7 @@ import {
   EMPLOYEE_DIVISIONS,
   EMPTY_EMPLOYEE,
   employeeInputSchema,
+  formatCnic,
   isActiveForStatus,
   toEmployeeStatusSlug,
   type Employee,
@@ -58,6 +60,7 @@ function toInput(employee: Employee): EmployeeInput {
     fullName: employee.fullName,
     attendanceCode: employee.attendanceCode,
     employeeCode: employee.employeeCode,
+    cnic: employee.cnic,
     hire_date: employee.hire_date,
     departmentId: employee.departmentId ?? 0,
     departmentChoice: employee.departmentId
@@ -97,6 +100,11 @@ const STATUS_OPTIONS = (Object.keys(STATUS_LABELS) as EmployeeStatusSlug[]).map(
     value: slug,
     label: STATUS_LABELS[slug],
   }),
+);
+
+/** A new hire can't already be blacklisted — that option is edit-only. */
+const CREATE_STATUS_OPTIONS = STATUS_OPTIONS.filter(
+  (option) => option.value !== "blacklisted",
 );
 
 /** "dd/mm/yyyy" -> "yyyy-mm-dd" (ISO), or "" if incomplete/invalid. */
@@ -157,6 +165,8 @@ function buildWritePayload(
           attendance_code: data.attendanceCode.trim(),
           full_name: data.fullName.trim(),
         }),
+    // Create, or the first CNIC on a record that had none (it's locked once set).
+    ...(data.cnic.trim() ? { id_card_no: data.cnic.trim() } : {}),
     ...(data.departmentChoice
       ? { department_id: Number(data.departmentChoice) }
       : {}),
@@ -174,7 +184,14 @@ function buildWritePayload(
         ? { is_active: data.employmentStatus === "active" }
         : {}
       : { is_active: isActiveForStatus(data.employmentStatus) }),
-    ...(data.hire_date ? { joining_date: data.hire_date } : {}),
+    // Backend field is `hire_date` (yyyy-mm-dd), create only — locked on
+    // edit. Typed so a wrong key can't slip through a spread again.
+    ...(!isUpdate && data.hire_date
+      ? ({ hire_date: data.hire_date } satisfies Pick<
+          EmployeeWritePayload,
+          "hire_date"
+        >)
+      : {}),
     // phone: digitsOnly(data.phone, PHONE_DIGIT_LIMIT) || undefined,
   };
 }
@@ -570,6 +587,15 @@ export function EmployeeForm({
   const dispatch = useAppDispatch();
   /** Which "Other" popup is open, if any. */
   const [addingKind, setAddingKind] = useState<CatalogKind | null>(null);
+  /**
+   * Picking Blacklisted (on a record that isn't already) opens the reason
+   * popup straight away. The reason is held here and sent on Save; Cancel
+   * puts the dropdown back to the status it had before.
+   */
+  const [blacklistReason, setBlacklistReason] = useState("");
+  const [reasonPrompt, setReasonPrompt] = useState<{
+    revertTo: EmployeeStatusSlug;
+  } | null>(null);
 
   const [values, setValues] = useState<EmployeeInput>(
     employee ? toInput(employee) : EMPTY_EMPLOYEE,
@@ -580,6 +606,8 @@ export function EmployeeForm({
     () => (employee ? toInput(employee) : null),
   );
   const [savingEdit, setSavingEdit] = useState(false);
+  /** CNIC is editable until the record has one; then it's fixed. */
+  const cnicLocked = readOnly || Boolean(employee?.cnic.trim());
   const hasChanges =
     initialValues != null && !formValuesMatch(initialValues, values);
 
@@ -695,57 +723,61 @@ export function EmployeeForm({
         values,
       );
       const snapshot = values;
-      const save = () => {
+      // Leaving blacklisted clears the stored note. The status route can't
+      // send null (omitting the query keeps the note), so use the full PUT.
+      const unblacklisting =
+        before.employmentStatus === "blacklisted" &&
+        parsed.data.employmentStatus !== "blacklisted";
+      /**
+       * Status-only → PUT .../status/{slug} (reason as the blacklist_reason
+       * query); otherwise PUT /employees/{id} (reason in the body, or null
+       * when un-blacklisting). Rejects on failure so the blacklist popup
+       * can show the error.
+       */
+      const persist = async (blacklistReason?: string | null) => {
         setSavingEdit(true);
-        void (async () => {
-          try {
-            if (onlyStatusChanged) {
-              await setStatus.mutateAsync({
-                id: employee.id,
-                status: parsed.data.employmentStatus,
-              });
-            } else {
-              await update.mutateAsync({
-                id,
-                input: buildWritePayload(
-                  parsed.data,
-                  selectedDesignationName,
-                  id,
-                ),
-              });
-            }
-            setInitialValues(snapshot);
-            setSaved(true);
-            toast.success("Changes saved");
-            onSaved?.();
-          } catch (error) {
-            toast.error(toApiError(error).message);
-          } finally {
-            setSavingEdit(false);
+        try {
+          if (onlyStatusChanged && blacklistReason !== null) {
+            await setStatus.mutateAsync({
+              id: employee.id,
+              status: parsed.data.employmentStatus,
+              blacklistReason,
+            });
+          } else {
+            await update.mutateAsync({
+              id,
+              input: {
+                ...buildWritePayload(parsed.data, selectedDesignationName, id),
+                ...(blacklistReason !== undefined
+                  ? { blacklist_reason: blacklistReason }
+                  : {}),
+              },
+            });
           }
-        })();
+          setInitialValues(snapshot);
+          setSaved(true);
+          toast.success("Changes saved");
+          onSaved?.();
+        } finally {
+          setSavingEdit(false);
+        }
       };
 
-      // Blacklisting (via the Employee status dropdown) asks first, as the
-      // old Blacklist button did. Every other save goes straight through.
+      // Blacklisting sends the reason entered when Blacklisted was picked.
       const blacklisting =
         before.employmentStatus !== "blacklisted" &&
         parsed.data.employmentStatus === "blacklisted";
-      if (!blacklisting) {
-        save();
+      if (blacklisting && !blacklistReason.trim()) {
+        setReasonPrompt({ revertTo: before.employmentStatus });
         return;
       }
-      toast.warning(`Blacklist ${employee.name}?`, {
-        id: `blacklist-employee-${employee.id}`,
-        description: "Their status will be set to blacklisted.",
-        duration: Infinity,
-        actionButtonStyle: {
-          background: "var(--priority-high)",
-          color: "#fff",
-        },
-        action: { label: "Blacklist", onClick: save },
-        cancel: { label: "Cancel", onClick: () => {} },
-      });
+      persist(
+        blacklisting
+          ? blacklistReason.trim()
+          : unblacklisting
+            ? null
+            : undefined,
+      ).catch((error) => toast.error(toApiError(error).message));
       return;
     }
 
@@ -830,7 +862,11 @@ export function EmployeeForm({
                 letterSpacing: "-0.02em",
               }}
             >
-              {readOnly ? "Employee" : isEdit ? "Edit employee" : "Add employee"}
+              {readOnly
+                ? "Employee"
+                : isEdit
+                  ? "Edit employee"
+                  : "Add employee"}
             </h2>
             <p
               style={{ margin: 0, fontSize: 13.5, color: "var(--text-muted)" }}
@@ -889,12 +925,44 @@ export function EmployeeForm({
               disabled={isEdit}
             />
             <TextField
+              label="CNIC"
+              mono
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="12345-1234567-1"
+              maxLength={15}
+              value={values.cnic}
+              error={errors.cnic}
+              hint={
+                cnicLocked
+                  ? "CNIC can't be changed once it's on file."
+                  : undefined
+              }
+              onChange={(event) => {
+                const cnic = formatCnic(event.target.value);
+                setValues((prev) => ({ ...prev, cnic }));
+                setSaved(false);
+                setErrors((prev) => {
+                  if (!prev.cnic) return prev;
+                  const next = { ...prev };
+                  delete next.cnic;
+                  return next;
+                });
+              }}
+              disabled={cnicLocked}
+            />
+            <TextField
               label="Joining date"
               type="date"
               value={values.hire_date}
               error={errors.hire_date}
               onChange={set("hire_date")}
-              disabled={readOnly}
+              hint={
+                isEdit
+                  ? "Joining date can't be changed after enrollment."
+                  : undefined
+              }
+              disabled={isEdit}
             />
             {/* <TextField
               label="Mobile number"
@@ -989,13 +1057,80 @@ export function EmployeeForm({
               disabled={readOnly}
               onChange={set("division")}
             />
-            <SelectField
-              label="Employee status"
-              options={STATUS_OPTIONS}
-              value={values.employmentStatus}
-              disabled={readOnly}
-              onChange={set("employmentStatus")}
-            />
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+                minWidth: 0,
+              }}
+            >
+              <SelectField
+                label="Employee status"
+                options={isEdit ? STATUS_OPTIONS : CREATE_STATUS_OPTIONS}
+                value={values.employmentStatus}
+                disabled={readOnly}
+                onChange={(event) => {
+                  const next = event.target.value as EmployeeStatusSlug;
+                  const previous = values.employmentStatus;
+                  set("employmentStatus")(event);
+                  if (
+                    isEdit &&
+                    next === "blacklisted" &&
+                    initialValues?.employmentStatus !== "blacklisted"
+                  ) {
+                    setReasonPrompt({ revertTo: previous });
+                  }
+                }}
+              />
+              {isEdit &&
+              values.employmentStatus === "blacklisted" &&
+              initialValues?.employmentStatus !== "blacklisted" &&
+              blacklistReason ? (
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "baseline",
+                    gap: 6,
+                    fontSize: 11.5,
+                    color: "var(--text-muted)",
+                    minWidth: 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={blacklistReason}
+                  >
+                    Reason: {blacklistReason}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReasonPrompt({
+                        revertTo: initialValues?.employmentStatus ?? "active",
+                      })
+                    }
+                    style={{
+                      flex: "none",
+                      padding: 0,
+                      border: "none",
+                      background: "transparent",
+                      color: "var(--interactive-primary)",
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Edit
+                  </button>
+                </span>
+              ) : null}
+            </div>
             <TimeField
               label="Start time"
               value={values.shiftStart}
@@ -1105,47 +1240,47 @@ export function EmployeeForm({
         </div> */}
 
         {((!readOnly && (!isEdit || hasChanges)) || (isEdit && canDelete)) && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            flexWrap: "wrap",
-            paddingTop: 18,
-            borderTop: "1px solid var(--border-subtle)",
-          }}
-        >
-          {isEdit ? (
-            <>
-              {!readOnly && hasChanges && (
-                <Button type="submit" icon="check" loading={savingEdit}>
-                  Update changes
-                </Button>
-              )}
-              {canDelete && (
-                <>
-                  <span style={{ flex: 1, minWidth: 0 }} />
-                  <Button
-                    type="button"
-                    variant="danger"
-                    icon="trash"
-                    onClick={handleDelete}
-                    loading={remove.isPending}
-                    disabled={savingEdit}
-                  >
-                    Delete employee
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              flexWrap: "wrap",
+              paddingTop: 18,
+              borderTop: "1px solid var(--border-subtle)",
+            }}
+          >
+            {isEdit ? (
+              <>
+                {!readOnly && hasChanges && (
+                  <Button type="submit" icon="check" loading={savingEdit}>
+                    Update changes
                   </Button>
-                </>
-              )}
-            </>
-          ) : (
-            !readOnly && (
-              <Button type="submit" icon="check" loading={create.isPending}>
-                Save employee
-              </Button>
-            )
-          )}
-        </div>
+                )}
+                {canDelete && (
+                  <>
+                    <span style={{ flex: 1, minWidth: 0 }} />
+                    <Button
+                      type="button"
+                      variant="danger"
+                      icon="trash"
+                      onClick={handleDelete}
+                      loading={remove.isPending}
+                      disabled={savingEdit}
+                    >
+                      Delete employee
+                    </Button>
+                  </>
+                )}
+              </>
+            ) : (
+              !readOnly && (
+                <Button type="submit" icon="check" loading={create.isPending}>
+                  Save employee
+                </Button>
+              )
+            )}
+          </div>
         )}
       </form>
       {addingKind && (
@@ -1158,6 +1293,26 @@ export function EmployeeForm({
           }
           onCreate={createCatalogItem}
           onClose={() => setAddingKind(null)}
+        />
+      )}
+      {reasonPrompt && employee && (
+        <BlacklistReasonModal
+          employeeName={employee.name}
+          initialReason={blacklistReason}
+          onConfirm={(reason) => {
+            setBlacklistReason(reason);
+            setReasonPrompt(null);
+          }}
+          onClose={() => {
+            // Cancelled with no reason on file → undo the Blacklisted pick.
+            if (!blacklistReason.trim()) {
+              setValues((prev) => ({
+                ...prev,
+                employmentStatus: reasonPrompt.revertTo,
+              }));
+            }
+            setReasonPrompt(null);
+          }}
         />
       )}
     </Card>

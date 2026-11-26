@@ -81,8 +81,15 @@ export function useUpdateEmployee() {
 export function useSetEmployeeStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: EmployeeStatusSlug }) =>
-      employeesApi.setStatus(id, status),
+    mutationFn: ({
+      id,
+      status,
+      blacklistReason,
+    }: {
+      id: string;
+      status: EmployeeStatusSlug;
+      blacklistReason?: string;
+    }) => employeesApi.setStatus(id, status, blacklistReason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.employees.all() });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });

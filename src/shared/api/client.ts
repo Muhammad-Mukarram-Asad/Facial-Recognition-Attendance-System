@@ -29,23 +29,32 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-/** 401, or a body that says the bearer token itself is no longer valid. */
-export function isUnauthorized(error: unknown): boolean {
-  if (!(error instanceof AxiosError)) return false;
-  if (error.response?.status === 401) return true;
+/** A body that says the bearer token itself is no longer valid. */
+function isTokenRejected(error: AxiosError): boolean {
   const payload = error.response?.data as { message?: unknown; detail?: unknown } | undefined;
   const message = `${payload?.message ?? ""} ${payload?.detail ?? ""}`.toLowerCase();
   return message.includes("invalid token") || message.includes("token expired") || message.includes("token has expired");
+}
+
+/** 401, or a body that says the bearer token itself is no longer valid. */
+export function isUnauthorized(error: unknown): boolean {
+  if (!(error instanceof AxiosError)) return false;
+  return error.response?.status === 401 || isTokenRejected(error);
 }
 
 function isSignInRequest(error: AxiosError): boolean {
   return (error.config?.url ?? "").includes("/auth/signin");
 }
 
+/** A wrong current password may come back as 401 — that is not an expired session. */
+function isPasswordCheck(error: AxiosError): boolean {
+  return (error.config?.url ?? "").includes("/me/change-password") && !isTokenRejected(error);
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    if (isUnauthorized(error) && !isSignInRequest(error)) forceSignOut();
+    if (isUnauthorized(error) && !isSignInRequest(error) && !isPasswordCheck(error)) forceSignOut();
     return Promise.reject(error);
   },
 );

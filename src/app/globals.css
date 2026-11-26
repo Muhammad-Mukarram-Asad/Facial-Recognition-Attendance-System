@@ -492,3 +492,29 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Native date/time picker icon — clickable, so show it. */
+input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
+
+/* Employee directory rows are links — highlight on hover/focus. */
+.ft-directory-row {
+  transition: background var(--duration-fast) var(--ease-out);
+}
+.ft-directory-row:hover,
+.ft-directory-row:focus-visible {
+  background: var(--surface-sunken);
+}
+
+/* Logo on a light surface: dark lettering in the light theme, white in the dark theme. */
+.ft-logo {
+  display: block;
+}
+.ft-logo--on-dark-theme,
+[data-theme="dark"] .ft-logo--on-light-theme {
+  display: none;
+}
+[data-theme="dark"] .ft-logo--on-dark-theme {
+  display: block;
+}

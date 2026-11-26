@@ -26,3 +26,6 @@ export type { ChartConfig } from './chart';
 export { Popover, PopoverContent, PopoverTrigger } from './Popover';
 export { Calendar } from './Calendar';
 export { Counter } from './Counter';
+export { FilterSelect } from './FilterSelect';
+export type { FilterSelectOption, FilterSelectProps } from './FilterSelect';
+export { ListToolbar } from './ListToolbar';

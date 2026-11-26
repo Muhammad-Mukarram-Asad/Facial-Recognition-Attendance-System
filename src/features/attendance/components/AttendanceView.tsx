@@ -9,15 +9,27 @@ import {
   type EmployeePhotoPreview,
 } from "@/features/dashboard/components/EmployeePhotoModal";
 import { streamPhotoUrl } from "@/features/dashboard/api/attendance-stream.api";
+import { useDepartments } from "@/features/departments/hooks/useDepartments";
+import { useDesignations } from "@/features/designations/hooks/useDesignations";
 import { useAllEmployees } from "@/features/employees/hooks/useEmployees";
 import { formatDate, orDash } from "@/shared/lib/format";
 import { useIsDesktop } from "@/shared/hooks/useMediaQuery";
-import { Avatar, Badge, Button, Card, EmptyState, Icon, SegmentedControl, SkeletonRows } from "@/shared/ui";
+import { Avatar, Badge, Button, Card, EmptyState, Icon, SkeletonRows } from "@/shared/ui";
 import type { Tone } from "@/shared/types";
 
 import { attendanceApi, type AttendanceRegisterQuery } from "../api/attendance.api";
 import { useAttendanceRegister } from "../hooks/useAttendance";
 import { downloadAsDatFile } from "../lib/exportDat";
+import {
+  DEFAULT_SORT,
+  EMPTY_FACETS,
+  facetOptions,
+  matchesFacets,
+  sortRecords,
+  type RegisterFacets,
+  type RegisterSort,
+} from "../lib/registerView";
+import { AttendanceToolbar } from "./AttendanceToolbar";
 import {
   AttendanceStatus,
   startOfToday,
@@ -119,17 +131,21 @@ export function AttendanceView() {
   const [date, setDate] = useState(startOfToday);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [facets, setFacets] = useState<RegisterFacets>(EMPTY_FACETS);
+  const [sort, setSort] = useState<RegisterSort>(DEFAULT_SORT);
   const [page, setPage] = useState(1);
   const [windowStart, setWindowStart] = useState(1);
   const [preview, setPreview] = useState<EmployeePhotoPreview | null>(null);
   const [exporting, setExporting] = useState(false);
   const closePreview = useCallback(() => setPreview(null), []);
   const roster = useAllEmployees();
+  const { items: departmentCatalog } = useDepartments();
+  const { items: designationCatalog } = useDesignations();
   const timestamp = useMemo(() => toRegisterTimestamp(date), [date]);
   const register = useAttendanceRegister(filterToQuery(timestamp, statusFilter));
 
-  // Date, status, and search each restart the list at page 1.
-  const listKey = `${timestamp}|${statusFilter}|${search}`;
+  // Date, status, search, filters and sort each restart the list at page 1.
+  const listKey = `${timestamp}|${statusFilter}|${search}|${facets.department}|${facets.designation}|${sort}`;
   const [settledListKey, setSettledListKey] = useState(listKey);
   const listChanged = listKey !== settledListKey;
   if (listChanged) {
@@ -173,10 +189,22 @@ export function AttendanceView() {
     },
     [date, enrollmentPhotos],
   );
+  /** Every department and designation, not only the ones on this day's rows. */
+  const departmentOptions = useMemo(
+    () => facetOptions(departmentCatalog, records, (record) => record.department),
+    [departmentCatalog, records],
+  );
+  const designationOptions = useMemo(
+    () => facetOptions(designationCatalog, records, (record) => record.designation),
+    [designationCatalog, records],
+  );
+  const facetsActive = Boolean(facets.department || facets.designation);
+
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return records.filter((record) => {
+    const matching = records.filter((record) => {
       if (statusFilter === "blacklisted" && !isBlacklistedRecord(record)) return false;
+      if (!matchesFacets(record, facets)) return false;
       if (!query) return true;
       return [record.name, String(record.employee_id), record.designation, record.department, record.status]
         .filter(Boolean)
@@ -184,7 +212,8 @@ export function AttendanceView() {
         .toLowerCase()
         .includes(query);
     });
-  }, [records, search, statusFilter]);
+    return sortRecords(matching, sort);
+  }, [records, search, statusFilter, facets, sort]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(listChanged ? 1 : page, pageCount);
@@ -274,15 +303,18 @@ export function AttendanceView() {
             Export DAT
           </Button>
         </div>
-        <div style={{ overflowX: "auto" }}>
-          <SegmentedControl
-            size="sm"
-            ariaLabel="Filter attendance by status"
-            options={[...STATUS_FILTERS]}
-            value={statusFilter}
-            onChange={(value) => setStatusFilter(value as StatusFilter)}
-          />
-        </div>
+        <AttendanceToolbar
+          statusOptions={[...STATUS_FILTERS]}
+          status={statusFilter}
+          onStatusChange={setStatusFilter}
+          departments={departmentOptions}
+          designations={designationOptions}
+          facets={facets}
+          onFacetsChange={setFacets}
+          sort={sort}
+          onSortChange={setSort}
+          onClear={() => setFacets(EMPTY_FACETS)}
+        />
       </Card>
 
       {register.isError ? (
@@ -306,7 +338,9 @@ export function AttendanceView() {
                 ? "No attendance rows for this day"
                 : search.trim()
                   ? "No records match that search"
-                  : "No records match that status"
+                  : facetsActive
+                    ? "No records match these filters"
+                    : "No records match that status"
             }
             icon="search-x"
           />

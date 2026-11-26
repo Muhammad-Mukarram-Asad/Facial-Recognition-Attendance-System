@@ -121,14 +121,25 @@ export const employeesApi = {
    * PUT /api/v1/employees/{employee_id}/status/{status_slug}
    * Slugs: active | inactive | blacklisted | vip. active sets is_active
    * true, inactive sets it false, blacklisted/vip leave it unchanged.
-   * Requires employee.update.
+   * `blacklistReason` goes in the `blacklist_reason` query; omitted, the
+   * stored note is left as it is. Requires employee.update.
    */
-  setStatus: async (id: string, status: EmployeeStatusSlug): Promise<void> => {
+  setStatus: async (
+    id: string,
+    status: EmployeeStatusSlug,
+    blacklistReason?: string,
+  ): Promise<void> => {
     const recordId = Number(id);
     if (!Number.isInteger(recordId) || recordId < 1) {
       throw new Error("Employee id must be an integer");
     }
-    await apiClient.put(`${EMPLOYEES_API_URL}/${recordId}/status/${status}`);
+    await apiClient.put(
+      `${EMPLOYEES_API_URL}/${recordId}/status/${status}`,
+      undefined,
+      blacklistReason !== undefined
+        ? { params: { blacklist_reason: blacklistReason } }
+        : undefined,
+    );
   },
 
   // DELETE /api/v1/employees/{id} — `id` is the integer primary key.

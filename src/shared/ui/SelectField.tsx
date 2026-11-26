@@ -53,6 +53,7 @@ export function SelectField({
             color: disabled ? undefined : 'var(--text-strong)',
             fontSize: 14,
             outline: 'none',
+            cursor: disabled ? 'not-allowed' : 'pointer',
             appearance: 'none',
             WebkitAppearance: 'none',
             MozAppearance: 'none',

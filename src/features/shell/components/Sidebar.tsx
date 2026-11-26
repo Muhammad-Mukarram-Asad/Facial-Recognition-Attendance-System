@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { AccountProfileModal } from "@/features/account/components/AccountProfileModal";
 import { useSession, useSignOut } from "@/features/auth/hooks/useSession";
 import { formatRoleName } from "@/features/auth/lib/role-label";
 import { APP_CONFIG } from "@/shared/config/app";
@@ -24,6 +26,8 @@ export function Sidebar({ variant = "rail", onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const signOut = useSignOut();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileHot, setProfileHot] = useState(false);
 
   return (
     <nav
@@ -113,60 +117,94 @@ export function Sidebar({ variant = "rail", onNavigate }: SidebarProps) {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 10,
-            padding: "8px 6px",
+            gap: 6,
+            padding: "4px 2px",
           }}
         >
-          <span
-            style={{
-              width: 34,
-              height: 34,
-              flex: "none",
-              borderRadius: 11,
-              background: "var(--gradient-brand)",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 12,
-              fontWeight: 700,
-              color: "#fff",
+          <button
+            type="button"
+            onClick={() => {
+              if (session?.user) setProfileOpen(true);
             }}
-          >
-            {initials(session?.user.name ?? "FaceTrack Admin")}
-          </span>
-          <div
+            onMouseEnter={() => setProfileHot(true)}
+            onMouseLeave={() => setProfileHot(false)}
+            onFocus={() => setProfileHot(true)}
+            onBlur={() => setProfileHot(false)}
+            aria-haspopup="dialog"
+            aria-expanded={profileOpen}
+            aria-label="View your profile"
+            title="View your profile"
             style={{
               flex: 1,
               minWidth: 0,
               display: "flex",
-              flexDirection: "column",
+              alignItems: "center",
+              gap: 10,
+              margin: 0,
+              padding: "6px 8px",
+              border: "none",
+              borderRadius: 12,
+              background: profileHot ? "rgba(255,255,255,0.12)" : "transparent",
+              boxShadow: profileHot ? "inset 0 0 0 1px rgba(255,255,255,0.14)" : "none",
+              color: "inherit",
+              font: "inherit",
+              textAlign: "left",
+              cursor: "pointer",
+              transition:
+                "background var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out)",
             }}
           >
             <span
               style={{
-                fontSize: 13,
-                fontWeight: 600,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
+                width: 34,
+                height: 34,
+                flex: "none",
+                borderRadius: 11,
+                background: "var(--gradient-brand)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 12,
+                fontWeight: 700,
+                color: "#fff",
               }}
             >
-              {session?.user.name ?? "—"}
+              {initials(session?.user.name ?? "FaceTrack Admin")}
             </span>
             <span
               style={{
-                fontSize: 11,
-                color: "var(--text-on-inverse-muted)",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
+                flex: 1,
+                minWidth: 0,
+                display: "flex",
+                flexDirection: "column",
               }}
             >
-              {session?.user.role
-                ? `${formatRoleName(session.user.role.name)} · ${session.user.email ?? ""}`
-                : (session?.user.email ?? "")}
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {session?.user.name ?? "—"}
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  color: "var(--text-on-inverse-muted)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {session?.user.role
+                  ? `${formatRoleName(session.user.role.name)} · ${session.user.email ?? ""}`
+                  : (session?.user.email ?? "")}
+              </span>
             </span>
-          </div>
+          </button>
           <button
             type="button"
             onClick={signOut}
@@ -189,6 +227,7 @@ export function Sidebar({ variant = "rail", onNavigate }: SidebarProps) {
           </button>
         </div>
       </div>
+      {profileOpen ? <AccountProfileModal onClose={() => setProfileOpen(false)} /> : null}
     </nav>
   );
 }

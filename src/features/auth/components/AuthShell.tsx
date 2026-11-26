@@ -56,7 +56,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
                 paddingBottom: 4,
               }}
             >
-              <Logo height={36} locked />
+              <Logo height={36} locked surface="light" />
               <span
                 style={{
                   fontSize: 16,

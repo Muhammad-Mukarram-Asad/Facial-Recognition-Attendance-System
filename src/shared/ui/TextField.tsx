@@ -12,15 +12,30 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
   endAdornment?: ReactNode;
 }
 
-export function TextField({ label, mono, error, hint, endAdornment, id, style, className, disabled, ...rest }: TextFieldProps) {
+/** Inputs that open a native picker — clickable anywhere, with a pointer cursor. */
+const PICKER_TYPES = new Set(['date', 'time', 'datetime-local', 'month', 'week']);
+
+export function TextField({ label, mono, error, hint, endAdornment, id, style, className, disabled, type, onClick, ...rest }: TextFieldProps) {
   const generated = useId();
   const inputId = id ?? generated;
+  const picker = type != null && PICKER_TYPES.has(type);
   return (
     <label htmlFor={inputId} style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
       <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-strong)' }}>{label}</span>
       <div style={{ position: 'relative' }}>
         <input
           id={inputId}
+          type={type}
+          onClick={(event) => {
+            if (picker && !disabled) {
+              try {
+                event.currentTarget.showPicker();
+              } catch {
+                // Not supported, or already open — the native control still works.
+              }
+            }
+            onClick?.(event);
+          }}
           aria-invalid={error ? true : undefined}
           disabled={disabled}
           className={`disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed ${className ?? ''}`}
@@ -35,6 +50,7 @@ export function TextField({ label, mono, error, hint, endAdornment, id, style, c
             fontSize: 14,
             fontFamily: mono ? 'var(--font-mono)' : 'var(--font-sans)',
             outline: 'none',
+            cursor: picker && !disabled ? 'pointer' : undefined,
             transition: 'border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out)',
             ...style,
           }}
